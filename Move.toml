@@ -1,0 +1,10 @@
+[package]
+name = "Kairo"
+edition = "2024.beta"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+CetusClmm = { local = "./externals/cetus_clmm" }
+
+[addresses]
+kairo = "0x0"
