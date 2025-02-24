@@ -1,5 +1,5 @@
 #[allow(lint(self_transfer))]
-module kairo::kairo {
+module moonbags::moonbags {
     use std::ascii::{Self, String};
     use std::string;
     use std::type_name;
@@ -11,8 +11,8 @@ module kairo::kairo {
     use sui::event::emit;
     use sui::clock::{Clock, Self};
 
-    use kairo::curves;
-    use kairo::utils;
+    use moonbags::curves;
+    use moonbags::utils;
 
     use cetus_clmm::factory::Pools;
     use cetus_clmm::pool_creator::Self;

@@ -1,5 +1,5 @@
 #[test_only]
-module kairo::kairo_test {
+module moonbags::moonbags_test {
     use sui::test_scenario::{Self};
     use sui::{
         coin,
@@ -9,7 +9,7 @@ module kairo::kairo_test {
     use std::ascii::{
         string,
     };
-    use kairo::kairo::{
+    use moonbags::moonbags::{
         Self,
         Configuration
     };
@@ -25,7 +25,7 @@ module kairo::kairo_test {
     fun test_init() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            kairo::init_for_testing(scenario.ctx());
+            moonbags::init_for_testing(scenario.ctx());
         };
         scenario.end();
     }
@@ -34,7 +34,7 @@ module kairo::kairo_test {
     fun create_token_for_test() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
-            kairo::init_for_testing(scenario.ctx());
+            moonbags::init_for_testing(scenario.ctx());
             let pools = cetus_clmm::factory::new_pools_for_test(scenario.ctx());
             test_scenario::return_shared(pools);
             let (admin, configs) = cetus_clmm::config::new_global_config_for_test(scenario.ctx(), 2000);
@@ -46,7 +46,7 @@ module kairo::kairo_test {
             let treasury_cap = coin::create_treasury_cap_for_testing<TEST>(scenario.ctx());
             let mut configuration = scenario.take_shared<Configuration>();
             let clock = clock::create_for_testing(scenario.ctx());
-            kairo::create<TEST>(
+            moonbags::create<TEST>(
                 &mut configuration, 
                 treasury_cap, 
                 &clock, 
@@ -70,7 +70,7 @@ module kairo::kairo_test {
             let clock = clock::create_for_testing(scenario.ctx());
             let coin = coin::mint_for_testing<SUI>(100000000, scenario.ctx());
 
-            kairo::buy_exact_in<TEST>(
+            moonbags::buy_exact_in<TEST>(
                 &mut configuration, 
                 coin, 
                 &mut cetus_pools, 

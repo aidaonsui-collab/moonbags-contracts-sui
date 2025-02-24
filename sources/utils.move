@@ -1,4 +1,4 @@
-module kairo::utils {
+module moonbags::utils {
     use std::bcs;
 
     // Errors.

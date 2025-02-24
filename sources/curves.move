@@ -1,5 +1,5 @@
-module kairo::curves {
-    use kairo::utils::{as_u64,sub,from_u64,div,mul,add};
+module moonbags::curves {
+    use moonbags::utils::{as_u64,sub,from_u64,div,mul,add};
 
     // Calculate the amount of Token A needed to obtain an exact amount of Token B
     public fun calculate_add_liquidity_cost(reserves_token_a: u64, reserves_token_b: u64, amount_token_b_out: u64) : u64 {
