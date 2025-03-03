@@ -1,0 +1,28 @@
+{
+  "name": "script",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "publish": "npx ts-node src/001_publish.ts",
+    "operator": "npx ts-node src/002_operator.ts",
+    "factory": "npx ts-node src/003_factory.ts",
+    "call": "npx ts-node src/004_call.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "ts-node"
+  },
+  "dependencies": {
+    "@mysten/sui.js": "^0.54.1",
+    "bun-types": "^1.0.25",
+    "dotenv": "^16.4.1",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@typescript-eslint/parser": "^6.19.1",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

@@ -1,5 +1,5 @@
 [package]
-name = "Kairo"
+name = "moonbags"
 edition = "2024.beta"
 
 [dependencies]
@@ -7,4 +7,4 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 CetusClmm = { local = "./externals/cetus_clmm" }
 
 [addresses]
-kairo = "0x0"
+moonbags = "0x0"

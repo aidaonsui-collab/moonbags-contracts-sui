@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "82B1D91CE4DF8F271C003654EF6FB5A2A84FB8D929CCC6A6B8ECA2E0F9346226"
+manifest_digest = "9FD8B32DF9864E348E1696470A9FA145A08C32CFEAB85EFD67A89058C364CE12"
 deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
 dependencies = [
   { id = "CetusClmm", name = "CetusClmm" },
@@ -48,14 +48,14 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.39.1"
+compiler-version = "1.43.1"
 edition = "2024.beta"
 flavor = "sui"
 
 [env]
 
-[env.mainnet]
-chain-id = "35834a8a"
-original-published-id = "0x616665b1f7a09ef99eb3afe76715be4fe6315d9d6aade51b3612d56ff2aedb3b"
-latest-published-id = "0x616665b1f7a09ef99eb3afe76715be4fe6315d9d6aade51b3612d56ff2aedb3b"
+[env.testnet]
+chain-id = "4c78adac"
+original-published-id = "0xf9cdaaedd53636f5b6b5162bb068ae78b65b99f9e5a640425ef844e356b5b8d4"
+latest-published-id = "0xf9cdaaedd53636f5b6b5162bb068ae78b65b99f9e5a640425ef844e356b5b8d4"
 published-version = "1"

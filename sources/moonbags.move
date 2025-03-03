@@ -1,20 +1,21 @@
 #[allow(lint(self_transfer))]
-module kairo::kairo {
+module moonbags::moonbags {
     use std::ascii::{Self, String};
     use std::string;
     use std::type_name;
     use std::u64::min;
 
     use sui::sui::SUI;
-    use sui::coin::{Self, Coin};
+    use sui::coin::{Self, Coin, CoinMetadata};
     use sui::dynamic_object_field;
     use sui::event::emit;
     use sui::clock::{Clock, Self};
 
-    use kairo::curves;
-    use kairo::utils;
+    use moonbags::curves;
+    use moonbags::utils;
 
-    use cetus_clmm::factory::{Self, Pools};
+    use cetus_clmm::factory::Pools;
+    use cetus_clmm::pool_creator::Self;
     use cetus_clmm::config::GlobalConfig;
     use cetus_clmm::position::Position;
 
@@ -218,7 +219,7 @@ module kairo::kairo {
         assert!(version == 1, 4);
     }
 
-    public entry fun buy_exact_out<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out: u64, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun buy_exact_out<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out: u64, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         assert_version(configuration.version);
 
         let token_address = type_name::get<Token>();
@@ -244,7 +245,7 @@ module kairo::kairo {
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
 
         if (actual_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= 3000000000000) {
-            transfer_pool<Token>(pool, clock, ctx);
+            transfer_pool<Token>(pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -260,7 +261,7 @@ module kairo::kairo {
         emit<TradedEvent>(traded_event);
     }
 
-    public entry fun buy_exact_in<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun buy_exact_in<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         assert_version(configuration.version);
         let amount_sui_in = coin::value<SUI>(&coin_sui);
 
@@ -291,7 +292,7 @@ module kairo::kairo {
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
 
         if (actual_token_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= 3000000000000) {
-            transfer_pool<Token>(pool, clock, ctx);
+            transfer_pool<Token>(pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -307,7 +308,7 @@ module kairo::kairo {
         emit<TradedEvent>(traded_event);
     }
 
-    fun buy_direct<Token>(mut coin_sui: Coin<SUI>, pool: &mut Pool<Token>, amount_out: u64, platform_fee: u64, admin_address: address, clock: &Clock, ctx: &mut TxContext) {
+    fun buy_direct<Token>(mut coin_sui: Coin<SUI>, pool: &mut Pool<Token>, amount_out: u64, platform_fee: u64, admin_address: address, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         assert!(!pool.is_completed, ECompletedPool);
         assert!(amount_out > 0, EInvalidInput);
 
@@ -328,7 +329,7 @@ module kairo::kairo {
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
 
         if (token_reserves_in_pool == actual_amount_out || coin::value<SUI>(&pool.real_sui_reserves) >= 6000000000000) {
-            transfer_pool<Token>(pool, clock, ctx);
+            transfer_pool<Token>(pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -344,7 +345,7 @@ module kairo::kairo {
         emit<TradedEvent>(traded_event);
     }
 
-    public fun buy_exact_out_returns<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out: u64, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
+    public fun buy_exact_out_returns<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out: u64, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig,  metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
         assert_version(configuration.version);
         let token_address = type_name::get<Token>();
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
@@ -365,7 +366,7 @@ module kairo::kairo {
         pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
 
         if (token_reserves_in_pool == actual_amount_out || coin::value<SUI>(&pool.real_sui_reserves) >= 3000000000000) {
-            transfer_pool<Token>(pool, clock, ctx);
+            transfer_pool<Token>(pool, cetus_pools, cetus_global_config , metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -382,7 +383,7 @@ module kairo::kairo {
         (coin_sui_out, coin_token_out)
     }
 
-    public fun buy_exact_in_returns<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
+    public fun buy_exact_in_returns<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
         assert_version(configuration.version);
         let amount_sui_in = coin::value<SUI>(&coin_sui);
 
@@ -406,7 +407,7 @@ module kairo::kairo {
         let (coin_token_out, coin_sui_out) = swap<Token>(pool, coin::zero<Token>(ctx), coin_sui, actual_amount_out, amount_sui_in - actual_amount_in - fee, ctx);
 
         if (actual_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= 3000000000000) {
-            transfer_pool<Token>(pool, clock, ctx);
+            transfer_pool<Token>(pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -423,7 +424,7 @@ module kairo::kairo {
         (coin_sui_out, coin_token_out)
     }
 
-    public fun buy_exact_out_returns_v2<Token>(configuration: &mut Configuration, threshold_config: &mut ThresholdConfig, mut coin_sui: Coin<SUI>, amount_out: u64, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
+    public fun buy_exact_out_returns_v2<Token>(configuration: &mut Configuration, threshold_config: &mut ThresholdConfig, mut coin_sui: Coin<SUI>, amount_out: u64, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
         assert_version(configuration.version);
         let token_address = type_name::get<Token>();
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
@@ -444,7 +445,7 @@ module kairo::kairo {
 
         pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
         if (token_reserves_in_pool == actual_amount_out || coin::value<SUI>(&pool.real_sui_reserves) >= threshold_config.threshold) {
-            transfer_pool<Token>(pool, clock, ctx);
+            transfer_pool<Token>(pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -461,7 +462,7 @@ module kairo::kairo {
         (coin_sui_out, coin_token_out)
     }
 
-    public fun buy_exact_in_returns_v2<Token>(configuration: &mut Configuration, threshold_config: &mut ThresholdConfig, mut coin_sui: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
+    public fun buy_exact_in_returns_v2<Token>(configuration: &mut Configuration, threshold_config: &mut ThresholdConfig, mut coin_sui: Coin<SUI>, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
         assert_version(configuration.version);
         let amount_sui_in = coin::value<SUI>(&coin_sui);
 
@@ -486,7 +487,7 @@ module kairo::kairo {
 
         pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
         if (token_reserves_in_pool == actual_amount_out || coin::value<SUI>(&pool.real_sui_reserves) >= threshold_config.threshold) {
-            transfer_pool<Token>(pool, clock, ctx);
+            transfer_pool<Token>(pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -503,7 +504,7 @@ module kairo::kairo {
         (coin_sui_out, coin_token_out)
     }
 
-    public entry fun buy_exact_out_v2<Token>(configuration: &mut Configuration, threshold_config: &mut ThresholdConfig, mut coin_sui: Coin<SUI>, amount_out: u64, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun buy_exact_out_v2<Token>(configuration: &mut Configuration, threshold_config: &mut ThresholdConfig, mut coin_sui: Coin<SUI>, amount_out: u64, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         assert_version(configuration.version);
 
         let token_address = type_name::get<Token>();
@@ -528,7 +529,7 @@ module kairo::kairo {
         transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
         if (actual_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= threshold_config.threshold) {
-            transfer_pool<Token>(pool, clock, ctx);
+            transfer_pool<Token>(pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -544,7 +545,7 @@ module kairo::kairo {
         emit<TradedEvent>(traded_event);
     }
 
-    public entry fun buy_exact_in_v2<Token>(configuration: &mut Configuration, threshold_config: &mut ThresholdConfig, mut coin_sui: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun buy_exact_in_v2<Token>(configuration: &mut Configuration, threshold_config: &mut ThresholdConfig, mut coin_sui: Coin<SUI>, pools: &mut Pools, config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         assert_version(configuration.version);
         let amount_sui_in = coin::value<SUI>(&coin_sui);
 
@@ -572,7 +573,7 @@ module kairo::kairo {
         transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
         if (actual_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= threshold_config.threshold) {
-            transfer_pool<Token>(pool, clock, ctx);
+            transfer_pool<Token>(pool, pools, config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -606,6 +607,10 @@ module kairo::kairo {
         twitter: String,
         telegram: String,
         website: String,
+        cetus_pools: &mut Pools, 
+        cetus_global_config: &mut GlobalConfig,
+        metadata_sui: &CoinMetadata<SUI>,
+        metadata_token: &CoinMetadata<Token>,
         ctx: &mut TxContext
     ) {
         assert!(ascii::length(&uri) <= 300, EInvalidInput);
@@ -631,7 +636,7 @@ module kairo::kairo {
 
         let token_address = type_name::get<Token>();
         if (coin::value<SUI>(&coin_sui) > 0) {
-            buy_direct<Token>(coin_sui, &mut pool, amount_out, configuration.platform_fee, configuration.admin, clock, ctx);
+            buy_direct<Token>(coin_sui, &mut pool, amount_out, configuration.platform_fee, configuration.admin, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         } else {
             coin::destroy_zero<SUI>(coin_sui);
         };
@@ -658,7 +663,7 @@ module kairo::kairo {
     }
 
     public entry fun create_threshold_config(threshold: u64, ctx: &mut TxContext) {
-        assert!(ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         let threshold_config = ThresholdConfig{
             id        : object::new(ctx),
             threshold : threshold,
@@ -667,7 +672,7 @@ module kairo::kairo {
     }
 
     public fun early_complete_pool<Token>(configuration: &mut Configuration, threshold_config: &mut ThresholdConfig, clock: &Clock, ctx: &mut TxContext) {
-        assert!(ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         let token_address = type_name::get<Token>();
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
         pool.is_completed = true;
@@ -682,8 +687,8 @@ module kairo::kairo {
         assert!(real_sui_reserves_amount >= threshold_config.threshold, 3);
         coin::join<Token>(&mut real_token_coin, coin::split<Token>(&mut pool.remain_token_reserves, coin::value<Token>(remain_token_reserves), ctx));
         if (real_sui_reserves_amount >= threshold_config.threshold) {
-            transfer::public_transfer<Coin<SUI>>(coin::split<SUI>(&mut real_sui_coin, threshold_config.threshold, ctx), @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-            transfer::public_transfer<Coin<Token>>(coin::split<Token>(&mut real_token_coin, configuration.remain_token_reserves, ctx), @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
+            transfer::public_transfer<Coin<SUI>>(coin::split<SUI>(&mut real_sui_coin, threshold_config.threshold, ctx), @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
+            transfer::public_transfer<Coin<Token>>(coin::split<Token>(&mut real_token_coin, configuration.remain_token_reserves, ctx), @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
         };
         transfer::public_transfer<Coin<SUI>>(real_sui_coin, ctx.sender());
         transfer::public_transfer<Coin<Token>>(real_token_coin, ctx.sender());
@@ -712,7 +717,7 @@ module kairo::kairo {
     }
 
     public entry fun migrate_version(configuration: &mut Configuration, new_version: u64, ctx: &mut TxContext) {
-        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         configuration.version = new_version;
     }
 
@@ -782,7 +787,7 @@ module kairo::kairo {
     }
 
     public fun skim<Token>(configuration: &mut Configuration, ctx: &mut TxContext) {
-        assert!(ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, 1);
+        assert!(ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, 1);
         let token_address = type_name::get<Token>();
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
         assert!(pool.is_completed, ECompletedPool);
@@ -795,7 +800,7 @@ module kairo::kairo {
     }
 
     public entry fun transfer_admin(configuration: &mut Configuration, new_admin: address, clock: &Clock, ctx: &mut TxContext) {
-        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         configuration.admin = new_admin;
         let ownership_transferred_event = OwnershipTransferredEvent{
             old_admin : ctx.sender(),
@@ -805,7 +810,7 @@ module kairo::kairo {
         emit<OwnershipTransferredEvent>(ownership_transferred_event);
     }
 
-    fun transfer_pool<Token>(pool: &mut Pool<Token>, clock: &Clock, ctx: &mut TxContext) {
+    fun transfer_pool<Token>(pool: &mut Pool<Token>, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         pool.is_completed = true;
 
         let real_token_reserves = &pool.real_token_reserves;
@@ -815,8 +820,7 @@ module kairo::kairo {
         let mut coin_token = coin::split<Token>(&mut pool.real_token_reserves, coin::value<Token>(real_token_reserves), ctx);
         coin::join<Token>(&mut coin_token, coin::split<Token>(&mut pool.remain_token_reserves, coin::value<Token>(remain_token_reserves), ctx));
 
-        transfer::public_transfer<Coin<SUI>>(coin::split<SUI>(&mut pool.real_sui_reserves, coin::value<SUI>(real_sui_reserves), ctx), @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-        transfer::public_transfer<Coin<Token>>(coin_token, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
+        let coin_sui = coin::split<SUI>(&mut pool.real_sui_reserves, coin::value<SUI>(real_sui_reserves), ctx);
 
         let pool_completed_event = PoolCompletedEvent{
             token_address : type_name::into_string(type_name::get<Token>()),
@@ -824,10 +828,12 @@ module kairo::kairo {
             ts            : clock::timestamp_ms(clock),
         };
         emit<PoolCompletedEvent>(pool_completed_event);
+
+        init_cetus_pool<Token>(coin_sui, coin_token, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
     }
 
     public entry fun update_config(configuration: &mut Configuration, new_platform_fee: u64, new_graduated_fee: u64, new_initial_virtual_sui_reserves: u64, new_initial_virtual_token_reserves: u64, new_remain_token_reserves: u64, new_token_decimals: u8, clock: &Clock, ctx: &mut TxContext) {
-        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         configuration.platform_fee = new_platform_fee;
         configuration.graduated_fee = new_graduated_fee;
         configuration.initial_virtual_sui_reserves = new_initial_virtual_sui_reserves;
@@ -853,47 +859,52 @@ module kairo::kairo {
     }
 
     public entry fun update_threshold_config(threshold_config: &mut ThresholdConfig, new_threshold: u64, ctx: &mut TxContext) {
-        assert!(ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         threshold_config.threshold = new_threshold;
     }
 
-    public entry fun init_cetus_pool<Token>(coin_sui: Coin<SUI>, coin_token: Coin<Token>, pools: &mut Pools, config: &mut GlobalConfig, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun init_cetus_pool<Token>(coin_sui: Coin<SUI>, coin_token: Coin<Token>, pools: &mut Pools, config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         let token_amount = coin::value<Token>(&coin_token) as u256;
         let sui_amount = coin::value<SUI>(&coin_sui) as u256;
         let token_name = type_name::into_string(type_name::get<Token>());
         let token_name_bytes = *ascii::as_bytes(&token_name);
         let sui_name = type_name::into_string(type_name::get<SUI>());
         let sui_name_bytes = *ascii::as_bytes(&sui_name);
-        let mut is_token_first = false;
         let mut i = 0;
+        let mut is_token_first = false;
         while (i < vector::length<u8>(&token_name_bytes)) {
-            let token_name_byte = *vector::borrow<u8>(&token_name_bytes, i);
             let sui_name_byte = *vector::borrow<u8>(&sui_name_bytes, i);
-            if (sui_name_byte < token_name_byte) {
+            let token_name_byte = *vector::borrow<u8>(&token_name_bytes, i);
+            if (token_name_byte < sui_name_byte) {
                 is_token_first = false;
                 break
             };
-            if (sui_name_byte > token_name_byte) {
+            if (token_name_byte > sui_name_byte) {
                 is_token_first = true;
                 break
             };
             i = i + 1;
         };
         if (is_token_first) {
-            let (position, coin_token, coin_sui) = factory::create_pool_with_liquidity<Token, SUI>(
-                pools, config, 60, sqrt(340282366920938463463374607431768211456 * token_amount / sui_amount),
+            let (position, coin_token, coin_sui) = pool_creator::create_pool_v2<Token, SUI>(
+                config, pools, 60, sqrt(340282366920938463463374607431768211456 * sui_amount / token_amount),
                 string::utf8(b""), 4294523716, 443580,
-                coin_token, coin_sui, token_amount as u64, sui_amount as u64,
+                coin_token, coin_sui, metadata_token, metadata_sui,
                 true, clock, ctx
             );
-            transfer::public_transfer<Position>(position, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-            transfer::public_transfer<Coin<Token>>(coin_token, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-            transfer::public_transfer<Coin<SUI>>(coin_sui, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
+            transfer::public_transfer<Position>(position, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
+            transfer::public_transfer<Coin<Token>>(coin_token, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
+            transfer::public_transfer<Coin<SUI>>(coin_sui, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
         } else {
-            let (position, coin_sui, coin_token) = factory::create_pool_with_liquidity<SUI, Token>(pools, config, 60, sqrt(340282366920938463463374607431768211456 * sui_amount / token_amount), string::utf8(b""), 4294523716, 443580, coin_sui, coin_token, sui_amount as u64, token_amount as u64, false, clock, ctx);
-            transfer::public_transfer<Position>(position, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-            transfer::public_transfer<Coin<SUI>>(coin_sui, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-            transfer::public_transfer<Coin<Token>>(coin_token, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
+            let (position, coin_sui, coin_token) = pool_creator::create_pool_v2<SUI, Token>(
+                config, pools, 60, sqrt(340282366920938463463374607431768211456 * token_amount / sui_amount),
+                string::utf8(b""), 4294523716, 443580, 
+                coin_sui, coin_token, metadata_sui, metadata_token, 
+                false, clock, ctx
+            );
+            transfer::public_transfer<Position>(position, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
+            transfer::public_transfer<Coin<SUI>>(coin_sui, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
+            transfer::public_transfer<Coin<Token>>(coin_token, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
         };
     }
 
