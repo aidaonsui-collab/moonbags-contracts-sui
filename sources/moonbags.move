@@ -663,7 +663,7 @@ module moonbags::moonbags {
     }
 
     public entry fun create_threshold_config(threshold: u64, ctx: &mut TxContext) {
-        assert!(ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         let threshold_config = ThresholdConfig{
             id        : object::new(ctx),
             threshold : threshold,
@@ -672,7 +672,7 @@ module moonbags::moonbags {
     }
 
     public fun early_complete_pool<Token>(configuration: &mut Configuration, threshold_config: &mut ThresholdConfig, clock: &Clock, ctx: &mut TxContext) {
-        assert!(ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         let token_address = type_name::get<Token>();
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
         pool.is_completed = true;
@@ -687,8 +687,8 @@ module moonbags::moonbags {
         assert!(real_sui_reserves_amount >= threshold_config.threshold, 3);
         coin::join<Token>(&mut real_token_coin, coin::split<Token>(&mut pool.remain_token_reserves, coin::value<Token>(remain_token_reserves), ctx));
         if (real_sui_reserves_amount >= threshold_config.threshold) {
-            transfer::public_transfer<Coin<SUI>>(coin::split<SUI>(&mut real_sui_coin, threshold_config.threshold, ctx), @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-            transfer::public_transfer<Coin<Token>>(coin::split<Token>(&mut real_token_coin, configuration.remain_token_reserves, ctx), @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
+            transfer::public_transfer<Coin<SUI>>(coin::split<SUI>(&mut real_sui_coin, threshold_config.threshold, ctx), @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
+            transfer::public_transfer<Coin<Token>>(coin::split<Token>(&mut real_token_coin, configuration.remain_token_reserves, ctx), @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
         };
         transfer::public_transfer<Coin<SUI>>(real_sui_coin, ctx.sender());
         transfer::public_transfer<Coin<Token>>(real_token_coin, ctx.sender());
@@ -717,7 +717,7 @@ module moonbags::moonbags {
     }
 
     public entry fun migrate_version(configuration: &mut Configuration, new_version: u64, ctx: &mut TxContext) {
-        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         configuration.version = new_version;
     }
 
@@ -787,7 +787,7 @@ module moonbags::moonbags {
     }
 
     public fun skim<Token>(configuration: &mut Configuration, ctx: &mut TxContext) {
-        assert!(ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, 1);
+        assert!(ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, 1);
         let token_address = type_name::get<Token>();
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
         assert!(pool.is_completed, ECompletedPool);
@@ -800,7 +800,7 @@ module moonbags::moonbags {
     }
 
     public entry fun transfer_admin(configuration: &mut Configuration, new_admin: address, clock: &Clock, ctx: &mut TxContext) {
-        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         configuration.admin = new_admin;
         let ownership_transferred_event = OwnershipTransferredEvent{
             old_admin : ctx.sender(),
@@ -833,7 +833,7 @@ module moonbags::moonbags {
     }
 
     public entry fun update_config(configuration: &mut Configuration, new_platform_fee: u64, new_graduated_fee: u64, new_initial_virtual_sui_reserves: u64, new_initial_virtual_token_reserves: u64, new_remain_token_reserves: u64, new_token_decimals: u8, clock: &Clock, ctx: &mut TxContext) {
-        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(configuration.admin == ctx.sender() || ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         configuration.platform_fee = new_platform_fee;
         configuration.graduated_fee = new_graduated_fee;
         configuration.initial_virtual_sui_reserves = new_initial_virtual_sui_reserves;
@@ -859,7 +859,7 @@ module moonbags::moonbags {
     }
 
     public entry fun update_threshold_config(threshold_config: &mut ThresholdConfig, new_threshold: u64, ctx: &mut TxContext) {
-        assert!(ctx.sender() == @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e, ENotHavePermission);
+        assert!(ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
         threshold_config.threshold = new_threshold;
     }
 
@@ -892,9 +892,9 @@ module moonbags::moonbags {
                 coin_token, coin_sui, metadata_token, metadata_sui,
                 true, clock, ctx
             );
-            transfer::public_transfer<Position>(position, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-            transfer::public_transfer<Coin<Token>>(coin_token, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-            transfer::public_transfer<Coin<SUI>>(coin_sui, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
+            transfer::public_transfer<Position>(position, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
+            transfer::public_transfer<Coin<Token>>(coin_token, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
+            transfer::public_transfer<Coin<SUI>>(coin_sui, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
         } else {
             let (position, coin_sui, coin_token) = pool_creator::create_pool_v2<SUI, Token>(
                 config, pools, 60, sqrt(340282366920938463463374607431768211456 * token_amount / sui_amount),
@@ -902,9 +902,9 @@ module moonbags::moonbags {
                 coin_sui, coin_token, metadata_sui, metadata_token, 
                 false, clock, ctx
             );
-            transfer::public_transfer<Position>(position, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-            transfer::public_transfer<Coin<SUI>>(coin_sui, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
-            transfer::public_transfer<Coin<Token>>(coin_token, @0xfe65cf3f401586ad76108d97b4a49fa382c3b16235f36e0fc972035b25414e9e);
+            transfer::public_transfer<Position>(position, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
+            transfer::public_transfer<Coin<SUI>>(coin_sui, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
+            transfer::public_transfer<Coin<Token>>(coin_token, @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe);
         };
     }
 
