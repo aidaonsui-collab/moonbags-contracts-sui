@@ -2,3 +2,4 @@ build/
 script/node_modules
 script/.env
 script/result
+.vscode
