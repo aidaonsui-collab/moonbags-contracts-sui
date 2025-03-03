@@ -51,55 +51,55 @@ module moonbags::moonbags_stake {
     }
 
     public struct InitializeStakingPoolEvent has copy, drop, store {
-        staking_pool: String,
+        staking_pool: ID,
         initializer: address,
         timestamp: u64,
     }
 
     public struct InitializeCreatorPoolEvent has copy, drop, store {
-        creator_pool: String,
+        creator_pool: ID,
         initializer: address,
         creator: address,
         timestamp: u64,
     }
 
     public struct StakeEvent has copy, drop, store {
-        staking_pool: String,
+        staking_pool: ID,
         staker: address,
         amount: u64,
         timestamp: u64,
     }
 
     public struct UnstakeEvent has copy, drop, store {
-        staking_pool: String,
+        staking_pool: ID,
         unstaker: address,
         amount: u64,
         timestamp: u64,
     }
 
     public struct UpdateRewardIndexEvent has copy, drop, store {
-        staking_pool: String,
+        staking_pool: ID,
         reward_updater: address,
         reward: u64,
         timestamp: u64,
     }
 
     public struct DepositPoolCreatorEvent has copy, drop, store {
-        creator_pool: String,
+        creator_pool: ID,
         depositor: address,
         amount: u64,
         timestamp: u64,
     }
 
     public struct ClaimStakingPoolEvent has copy, drop, store {
-        staking_pool: String,
+        staking_pool: ID,
         claimer: address,
         reward: u64,
         timestamp: u64,
     }
     
     public struct ClaimCreatorPoolEvent has copy, drop, store {
-        creator_pool: String,
+        creator_pool: ID,
         claimer: address,
         reward: u64,
         timestamp: u64,
@@ -128,14 +128,14 @@ module moonbags::moonbags_stake {
             reward_index        : 0,
         };
 
-        dynamic_object_field::add(&mut configuration.id,  staking_pool_address, staking_pool);
-
         let initialize_staking_pool_event = InitializeStakingPoolEvent{
-            staking_pool        : staking_pool_address,
+            staking_pool        : object::id(&staking_pool),
             initializer         : ctx.sender(),
             timestamp           : clock::timestamp_ms(clock),
         };
         emit<InitializeStakingPoolEvent>(initialize_staking_pool_event);
+
+        dynamic_object_field::add(&mut configuration.id,  staking_pool_address, staking_pool);
     }
 
     public fun initialize_creator_pool(configuration: &mut Configuration, creator: address, clock: &Clock, ctx: &mut TxContext) {
@@ -147,15 +147,15 @@ module moonbags::moonbags_stake {
             creator             : creator,
         };
 
-        dynamic_object_field::add(&mut configuration.id,  creator.to_ascii_string(), creator_pool);
-
         let initialize_staking_pool_event = InitializeCreatorPoolEvent{
-            creator_pool        : type_name::get_address(&type_name::get<CreatorPool>()),
+            creator_pool        : object::id(&creator_pool),
             initializer         : ctx.sender(),
             creator             : creator,
             timestamp           : clock::timestamp_ms(clock),
         };
         emit<InitializeCreatorPoolEvent>(initialize_staking_pool_event);
+
+        dynamic_object_field::add(&mut configuration.id,  creator.to_ascii_string(), creator_pool);
     }
 
     // Update adding rewards and update reward index
@@ -180,7 +180,7 @@ module moonbags::moonbags_stake {
         coin::join(&mut staking_pool.sui_token, reward_sui_coin);
 
         let update_reward_index_event = UpdateRewardIndexEvent {
-            staking_pool        : staking_pool_address,
+            staking_pool        : object::id(staking_pool),
             reward_updater      : ctx.sender(),
             reward              : reward_amount,
             timestamp           : clock::timestamp_ms(clock)
@@ -202,7 +202,7 @@ module moonbags::moonbags_stake {
         coin::join(&mut creator_pool.sui_token, reward_sui_coin);
 
         let update_reward_index_event = DepositPoolCreatorEvent {
-            creator_pool        : type_name::get_address(&type_name::get<CreatorPool>()),
+            creator_pool        : object::id(creator_pool),
             depositor           : ctx.sender(),
             amount              : reward_amount,
             timestamp           : clock::timestamp_ms(clock)
@@ -279,7 +279,7 @@ module moonbags::moonbags_stake {
         coin::join(&mut staking_pool.staking_token, staking_coin);
 
         let stake_event = StakeEvent {
-            staking_pool        : staking_pool_address,
+            staking_pool        : object::id(staking_pool),
             staker              : staker_address,
             amount              : amount_token_staking_in,
             timestamp           : clock::timestamp_ms(clock),
@@ -317,7 +317,7 @@ module moonbags::moonbags_stake {
         transfer::public_transfer<Coin<StakingToken>>(unstake_coin, staker_address);
 
         let unstake_event = UnstakeEvent {
-            staking_pool        : staking_pool_address,
+            staking_pool        : object::id(staking_pool),
             unstaker            : staker_address,
             amount              : unstake_amount,
             timestamp           : clock::timestamp_ms(clock),
@@ -353,7 +353,7 @@ module moonbags::moonbags_stake {
         transfer::public_transfer<Coin<SUI>>(sui_coin, staker_address);
 
         let claim_staking_pool_event = ClaimStakingPoolEvent {
-            staking_pool        : staking_pool_address,
+            staking_pool        : object::id(staking_pool),
             claimer             : staker_address,
             reward              : reward_amount,
             timestamp           : clock::timestamp_ms(clock),
@@ -381,7 +381,7 @@ module moonbags::moonbags_stake {
         transfer::public_transfer<Coin<SUI>>(sui_coin, creator_pool.creator);    
 
         let claim_creator_pool_event = ClaimCreatorPoolEvent {
-            creator_pool: type_name::get_address(&type_name::get<CreatorPool>()),
+            creator_pool: object::id(creator_pool),
             claimer: ctx.sender(),
             reward: reward_amount,
             timestamp: clock::timestamp_ms(clock),
