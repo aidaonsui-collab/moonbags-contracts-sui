@@ -20,12 +20,15 @@ module moonbags::moonbags {
     use cetus_clmm::position::Position;
 
     const DEFAULT_THRESHOLD: u64 = 3000000000000; // 3000 SUI
+    const VERSION: u64 = 1;
 
     const ENotHavePermission: u64 = 1;
     const EInvalidInput: u64 = 2;
+    const EWrongVersion: u64 = 4;
     const ECompletedPool: u64 = 5;
     const EInsufficientInput: u64 = 6;
     const EExistTokenSupply: u64 = 7;
+    const ENotUpgrade: u64 = 10;
 
     public struct Configuration has store, key {
         id: UID,
@@ -116,7 +119,7 @@ module moonbags::moonbags {
     fun init(ctx: &mut TxContext) {
         let configuration = Configuration{
             id: object::new(ctx),
-            version: 1,
+            version: VERSION,
             admin: ctx.sender(),
             platform_fee: 50,
             graduated_fee: 300000000000,
@@ -221,7 +224,7 @@ module moonbags::moonbags {
     }
 
     fun assert_version(version: u64) {
-        assert!(version == 1, 4);
+        assert!(version == VERSION, EWrongVersion);
     }
 
     public entry fun buy_exact_out<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out: u64, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
@@ -558,9 +561,10 @@ module moonbags::moonbags {
         }
     }
 
-    public entry fun migrate_version(configuration: &mut Configuration, new_version: u64, ctx: &mut TxContext) {
+    public entry fun migrate_version(configuration: &mut Configuration, ctx: &mut TxContext) {
         assert!(configuration.admin == ctx.sender() || ctx.sender() == @0x45c5b4a44b7f0411b661b677d2816d04c972d8fc4a0c79ca83dc10cc4827d5fe, ENotHavePermission);
-        configuration.version = new_version;
+        assert!(configuration.version < VERSION, ENotUpgrade);
+        configuration.version = VERSION;
     }
 
     public entry fun sell<Token>(configuration: &mut Configuration, coin_token: Coin<Token>, amount_out_min: u64, clock: &Clock, ctx: &mut TxContext) {
