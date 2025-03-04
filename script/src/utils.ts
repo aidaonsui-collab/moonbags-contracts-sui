@@ -1,8 +1,4 @@
-import {
-  getFullnodeUrl,
-  OwnedObjectRef,
-  SuiClient,
-} from "@mysten/sui.js/client";
+import { getFullnodeUrl, SuiClient } from "@mysten/sui.js/client";
 import { Ed25519Keypair } from "@mysten/sui.js/keypairs/ed25519";
 import { TransactionBlock } from "@mysten/sui.js/transactions";
 import dotenv from "dotenv";
@@ -12,6 +8,9 @@ export interface IObjectInfo {
   type: string | undefined;
   id: string | undefined;
 }
+
+export const package_address = process.env.PACKAGE_ADDRESS!;
+export const config_address = process.env.CONFIG_ADDRESS!;
 
 export const keypair = Ed25519Keypair.fromSecretKey(
   Uint8Array.from(Buffer.from(process.env.KEY!, "base64")).slice(1)
