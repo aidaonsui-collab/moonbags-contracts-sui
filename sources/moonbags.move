@@ -93,6 +93,7 @@ module moonbags::moonbags {
         created_by: address,
         virtual_sui_reserves: u64,
         virtual_token_reserves: u64,
+        threshold: u64,
         ts: u64,
     }
 
@@ -194,6 +195,7 @@ module moonbags::moonbags {
             created_by             : ctx.sender(),
             virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
             virtual_token_reserves : configuration.initial_virtual_token_reserves,
+            threshold              : pool.threshold,
             ts                     : clock::timestamp_ms(clock),
         };
         dynamic_object_field::add<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address), pool);
@@ -511,6 +513,7 @@ module moonbags::moonbags {
             created_by             : ctx.sender(),
             virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
             virtual_token_reserves : configuration.initial_virtual_token_reserves,
+            threshold              : pool.threshold,
             ts                     : clock::timestamp_ms(clock),
         };
         dynamic_object_field::add<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address), pool);
