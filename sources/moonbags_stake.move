@@ -19,7 +19,7 @@ module moonbags::moonbags_stake {
     const EPoolAlreadyExist: u64 = 8;
     const ERewardToClaimNotValid: u64 = 9;
 
-    const MULTIPLIER: u64 = 1_000_000_000_000; // 1e12
+    const MULTIPLIER: u128 = 1_000_000_000_000_000_000; // 1e18
 
     public struct Configuration has store, key {
         id: UID,
@@ -33,7 +33,7 @@ module moonbags::moonbags_stake {
         staking_token: Coin<StakingToken>,
         sui_token: Coin<SUI>,
         total_supply: u64,
-        reward_index: u64,
+        reward_index: u128,
     }
 
     #[allow(lint(coin_field))]
@@ -46,7 +46,7 @@ module moonbags::moonbags_stake {
     public struct StakingAccount has key, store {
         id: UID,
         balance: u64,
-        reward_index: u64,
+        reward_index: u128,
         earned: u64,
     }
 
@@ -175,7 +175,7 @@ module moonbags::moonbags_stake {
         let reward_amount = coin::value<SUI>(&reward_sui_coin);
         assert!(reward_amount > 0, EInvalidAmount);
 
-        staking_pool.reward_index = staking_pool.reward_index + (reward_amount * MULTIPLIER) / staking_pool.total_supply;
+        staking_pool.reward_index = staking_pool.reward_index + (reward_amount as u128) * MULTIPLIER / (staking_pool.total_supply as u128);
 
         coin::join(&mut staking_pool.sui_token, reward_sui_coin);
 
@@ -211,9 +211,9 @@ module moonbags::moonbags_stake {
     }
 
     // Calculates the rewards earned
-    fun calculate_rewards(staking_pool_reward_index: u64, staking_account: &StakingAccount): u64 {
-        let shares = staking_account.balance;
-        (shares * (staking_pool_reward_index - staking_account.reward_index)) / MULTIPLIER
+    fun calculate_rewards(staking_pool_reward_index: u128, staking_account: &StakingAccount): u64 {
+        let shares = staking_account.balance as u128;
+        ((shares * (staking_pool_reward_index - staking_account.reward_index)) / MULTIPLIER) as u64
     }
 
     // Get the rewards earned of sender
@@ -237,7 +237,7 @@ module moonbags::moonbags_stake {
     }
 
     // Update earned and reward index
-    fun update_rewards(staking_pool_reward_index: u64, staking_account: &mut StakingAccount) {
+    fun update_rewards(staking_pool_reward_index: u128, staking_account: &mut StakingAccount) {
         staking_account.earned = staking_account.earned + calculate_rewards(staking_pool_reward_index, staking_account);
         staking_account.reward_index = staking_pool_reward_index;
     }
@@ -402,7 +402,7 @@ module moonbags::moonbags_stake {
     }
 
     #[test_only]
-    public(package) fun get_staking_pool_values_for_testing<StakingToken>(pool: &StakingPool<StakingToken>): (&UID ,u64, u64, u64, u64) {
+    public(package) fun get_staking_pool_values_for_testing<StakingToken>(pool: &StakingPool<StakingToken>): (&UID ,u64, u64, u64, u128) {
         (
             &pool.id,
             coin::value(&pool.staking_token),
@@ -413,7 +413,7 @@ module moonbags::moonbags_stake {
     }
 
     #[test_only]
-    public(package) fun get_staking_account_values_for_testing(account: &StakingAccount): (u64, u64, u64) {
+    public(package) fun get_staking_account_values_for_testing(account: &StakingAccount): (u64, u128, u64) {
         (
             account.balance,
             account.reward_index,
