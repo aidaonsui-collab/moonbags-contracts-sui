@@ -21,7 +21,6 @@ const claimStakingPool = async (stakingToken: string) => {
     });
 
     await processResult(tx);
-    console.log("Successfully claimed rewards from staking pool!");
   } catch (e) {
     console.error("Error claiming from staking pool:", e);
   }

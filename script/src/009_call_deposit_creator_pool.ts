@@ -3,12 +3,14 @@ import readline from "readline";
 import { stakeConfigAddress, packageAddress, processResult } from "./utils";
 
 const depositCreatorPool = async (
-  creatorAddress: string,
+  tokenAddress: string,
   rewardAmount: number
 ) => {
   try {
     console.log(
-      `Depositing ${rewardAmount} SUI to creator pool for: ${creatorAddress}`
+      `Depositing ${rewardAmount} SUI to ${tokenAddress
+        .split("::")
+        .at(-1)} creator pool`
     );
 
     const tx = new TransactionBlock();
@@ -23,13 +25,11 @@ const depositCreatorPool = async (
 
     tx.moveCall({
       target: `${packageAddress}::moonbags_stake::deposit_creator_pool`,
-      typeArguments: [],
-      arguments: [configuration, rewardSuiCoin, tx.pure(creatorAddress), clock],
+      typeArguments: [tokenAddress],
+      arguments: [configuration, rewardSuiCoin, clock],
     });
 
-    console.log("Processing deposit to creator pool transaction...");
     await processResult(tx);
-    console.log("Successfully deposited SUI to creator pool!");
   } catch (e) {
     console.error("Error depositing to creator pool:", e);
   }
@@ -41,15 +41,15 @@ const run = async () => {
     output: process.stdout,
   });
 
-  rl.question(
-    "Enter the creator address (e.g., 0x123...): ",
-    (creatorAddress) => {
-      rl.question(`Enter the amount of SUI to deposit: `, (amount) => {
-        depositCreatorPool(creatorAddress, parseFloat(amount));
+  rl.question(`Enter the amount of SUI to deposit: `, (amount) => {
+    rl.question(
+      "Enter the token address (e.g., 0x123::token::TOKEN): ",
+      (tokenAddress) => {
+        depositCreatorPool(tokenAddress, parseFloat(amount));
         rl.close();
-      });
-    }
-  );
+      }
+    );
+  });
 };
 
 run();

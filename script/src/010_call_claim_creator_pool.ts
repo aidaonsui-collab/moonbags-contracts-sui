@@ -1,65 +1,44 @@
 import { TransactionBlock } from "@mysten/sui.js/transactions";
 import readline from "readline";
-import {
-  stakeConfigAddress,
-  keypair,
-  packageAddress,
-  processResult,
-} from "./utils";
+import { packageAddress, processResult, stakeConfigAddress } from "./utils";
 
-const claimCreatorPool = async (creatorAddress: string) => {
+const claimCreatorPool = async (tokenAddress: string) => {
   try {
     console.log(
-      `Claiming rewards from creator pool for address: ${creatorAddress}`
+      `Claiming rewards from ${tokenAddress.split("::").at(-1)} creator pool`
     );
 
     const tx = new TransactionBlock();
     tx.setGasBudget(30000000);
 
-    // Fetch required objects
     const configuration = tx.object(stakeConfigAddress);
     const clock = tx.object("0x6");
 
-    const [claimedAmount] = tx.moveCall({
+    tx.moveCall({
       target: `${packageAddress}::moonbags_stake::claim_creator_pool`,
-      typeArguments: [],
-      arguments: [configuration, tx.pure(creatorAddress), clock],
+      typeArguments: [tokenAddress],
+      arguments: [configuration, clock],
     });
 
-    console.log("Processing claim from creator pool transaction...");
     await processResult(tx);
-    console.log("Successfully claimed rewards from creator pool!");
   } catch (e) {
     console.error("Error claiming from creator pool:", e);
   }
 };
 
 const run = async () => {
-  try {
-    // Display wallet address for reference
-    const walletAddress = keypair.getPublicKey().toSuiAddress();
-    console.log(`Current wallet address: ${walletAddress}`);
-    console.log(
-      "Note: You can only claim from creator pools where you are the creator"
-    );
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    rl.question(
-      "Enter the creator address to claim rewards for (default: your address): ",
-      (creatorAddress) => {
-        // Use the provided address or default to the user's wallet address
-        const addressToClaim = creatorAddress.trim() || walletAddress;
-        claimCreatorPool(addressToClaim);
-        rl.close();
-      }
-    );
-  } catch (e) {
-    console.error("Error initializing script:", e);
-  }
+  rl.question(
+    "Enter the token address (e.g., 0x123::token::TOKEN): ",
+    (tokenAddress) => {
+      claimCreatorPool(tokenAddress);
+      rl.close();
+    }
+  );
 };
 
 run();

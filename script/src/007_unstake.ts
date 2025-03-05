@@ -27,9 +27,7 @@ const unstake = async (stakingToken: string, unstakeAmount: number) => {
       ],
     });
 
-    console.log("Processing unstake transaction...");
     await processResult(tx);
-    console.log("Successfully unstaked tokens!");
   } catch (e) {
     console.error("Error unstaking:", e);
   }
