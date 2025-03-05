@@ -129,10 +129,9 @@ module moonbags::moonbags_stake {
 
     // === Public Functions ===
     public fun initialize_staking_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) {
-        let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
-        let staking_pool_address = type_name::get_address(&staking_pool_type_name);
+        let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
-        assert!(!dynamic_object_field::exists_(&configuration.id, staking_pool_address), EPoolAlreadyExist);
+        assert!(!dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EPoolAlreadyExist);
 
         let staking_pool = StakingPool<StakingToken> {
             id                  : object::new(ctx),
@@ -150,14 +149,13 @@ module moonbags::moonbags_stake {
         };
         emit<InitializeStakingPoolEvent>(initialize_staking_pool_event);
 
-        dynamic_object_field::add(&mut configuration.id,  staking_pool_address, staking_pool);
+        dynamic_object_field::add(&mut configuration.id,  staking_pool_type_name, staking_pool);
     }
 
     public fun initialize_creator_pool<StakingToken>(configuration: &mut Configuration, creator: address, clock: &Clock, ctx: &mut TxContext) {
-        let creator_pool_type_name = type_name::get<CreatorPool<StakingToken>>();
-        let creator_pool_address = type_name::get_address(&creator_pool_type_name);
+        let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
-        assert!(!dynamic_object_field::exists_(&configuration.id, creator_pool_address), EPoolAlreadyExist);
+        assert!(!dynamic_object_field::exists_(&configuration.id, creator_pool_type_name), EPoolAlreadyExist);
 
         let creator_pool = CreatorPool<StakingToken> {
             id                  : object::new(ctx),
@@ -174,18 +172,17 @@ module moonbags::moonbags_stake {
         };
         emit<InitializeCreatorPoolEvent>(initialize_staking_pool_event);
 
-        dynamic_object_field::add(&mut configuration.id,  creator_pool_address, creator_pool);
+        dynamic_object_field::add(&mut configuration.id,  creator_pool_type_name, creator_pool);
     }
 
     public fun update_reward_index<StakingToken>(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
-        let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
-        let staking_pool_address = type_name::get_address(&staking_pool_type_name);
+        let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
-        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_address), EStakingPoolNotExist);
+        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EStakingPoolNotExist);
 
         let staking_pool = dynamic_object_field::borrow_mut<String, StakingPool<StakingToken>>(
             &mut configuration.id,
-            staking_pool_address
+            staking_pool_type_name
         );
 
         assert!(staking_pool.total_supply > 0, ENoStakers);
@@ -208,14 +205,13 @@ module moonbags::moonbags_stake {
     }
 
     public fun deposit_creator_pool<StakingToken>(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
-        let creator_pool_type_name = type_name::get<CreatorPool<StakingToken>>();
-        let creator_pool_address = type_name::get_address(&creator_pool_type_name);
+        let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
-        assert!(dynamic_object_field::exists_(&configuration.id, creator_pool_address), EStakingCreatorNotExist);
+        assert!(dynamic_object_field::exists_(&configuration.id, creator_pool_type_name), EStakingCreatorNotExist);
 
         let creator_pool = dynamic_object_field::borrow_mut<String, CreatorPool<StakingToken>>(
             &mut configuration.id,
-            creator_pool_address
+            creator_pool_type_name
         );
 
         let reward_amount = coin::value<SUI>(&reward_sui_coin);
@@ -234,14 +230,13 @@ module moonbags::moonbags_stake {
     }
 
     public fun stake<StakingToken>(configuration: &mut Configuration, staking_coin: Coin<StakingToken>, clock: &Clock, ctx: &mut TxContext) {
-        let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
-        let staking_pool_address = type_name::get_address(&staking_pool_type_name);
+        let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
         
-        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_address), EStakingPoolNotExist);
+        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EStakingPoolNotExist);
 
         let staking_pool = dynamic_object_field::borrow_mut<String, StakingPool<StakingToken>>(
             &mut configuration.id,
-            staking_pool_address
+            staking_pool_type_name
         );
 
         let staker_address = ctx.sender();
@@ -282,14 +277,13 @@ module moonbags::moonbags_stake {
     public fun unstake<StakingToken>(configuration: &mut Configuration, unstake_amount: u64, clock: &Clock, ctx: &mut TxContext) {
         assert!(unstake_amount > 0, EInvalidAmount);
 
-        let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
-        let staking_pool_address = type_name::get_address(&staking_pool_type_name);
+        let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
-        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_address), EStakingPoolNotExist);
+        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EStakingPoolNotExist);
 
         let staking_pool = dynamic_object_field::borrow_mut<String, StakingPool<StakingToken>>(
             &mut configuration.id,
-            staking_pool_address
+            staking_pool_type_name
         );
 
         let staker_address = ctx.sender();
@@ -319,14 +313,13 @@ module moonbags::moonbags_stake {
     }
 
     public fun claim_staking_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) : u64 {
-        let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
-        let staking_pool_address = type_name::get_address(&staking_pool_type_name);
+        let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
-        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_address), EStakingPoolNotExist);
+        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EStakingPoolNotExist);
 
         let staking_pool = dynamic_object_field::borrow_mut<String, StakingPool<StakingToken>>(
             &mut configuration.id,
-            staking_pool_address
+            staking_pool_type_name
         );
 
         let staker_address = ctx.sender();
@@ -358,14 +351,13 @@ module moonbags::moonbags_stake {
     }
 
     public fun claim_creator_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) : u64 {
-        let creator_pool_type_name = type_name::get<CreatorPool<StakingToken>>();
-        let creator_pool_address = type_name::get_address(&creator_pool_type_name);
+        let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
-        assert!(dynamic_object_field::exists_(&configuration.id, creator_pool_address), EStakingCreatorNotExist);
+        assert!(dynamic_object_field::exists_(&configuration.id, creator_pool_type_name), EStakingCreatorNotExist);
 
         let creator_pool = dynamic_object_field::borrow_mut<String, CreatorPool<StakingToken>>(
             &mut configuration.id,
-            creator_pool_address,
+            creator_pool_type_name,
         );
 
         assert!(creator_pool.creator == ctx.sender(), EInvalidCreator);
@@ -390,14 +382,13 @@ module moonbags::moonbags_stake {
 
     // === View Functions ===
     public fun calculate_rewards_earned<StakingToken>(configuration: &Configuration, ctx: &mut TxContext): u64 {
-        let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
-        let staking_pool_address = type_name::get_address(&staking_pool_type_name);
+        let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
-        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_address), EStakingPoolNotExist);
+        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EStakingPoolNotExist);
 
         let staking_pool = dynamic_object_field::borrow<String, StakingPool<StakingToken>>(
             &configuration.id,
-            staking_pool_address
+            staking_pool_type_name
         );
 
         let staker_address = ctx.sender();

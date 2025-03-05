@@ -2,6 +2,7 @@
 module moonbags::staking_test {
     use std::type_name;
     use std::ascii::String;
+    // use std::debug::print;
 
     use sui::test_scenario::Self;
     use sui::clock;
@@ -21,19 +22,17 @@ module moonbags::staking_test {
 
     #[test_only]
     public(package) fun get_taking_pool(config: &Configuration) : &StakingPool<StakingToken> {
-        let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
-        let staking_pool_address = type_name::get_address(&staking_pool_type_name);
+        let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
         let config_id = moonbags_stake::get_configuration_id_for_testing(config);
-        let staking_pool = dynamic_object_field::borrow<String, StakingPool<StakingToken>>(config_id, staking_pool_address);
+        let staking_pool = dynamic_object_field::borrow<String, StakingPool<StakingToken>>(config_id, staking_pool_type_name);
         staking_pool
     }
 
     #[test_only]
     public(package) fun get_creator_pool(config: &Configuration) : &CreatorPool<StakingToken> {
-        let creator_pool_type_name = type_name::get<StakingPool<StakingToken>>();
-        let creator_pool_address = type_name::get_address(&creator_pool_type_name);
+        let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
         let config_id = moonbags_stake::get_configuration_id_for_testing(config);
-        let creator_pool = dynamic_object_field::borrow(config_id, creator_pool_address);
+        let creator_pool = dynamic_object_field::borrow(config_id, creator_pool_type_name);
         creator_pool
     }
 
@@ -347,6 +346,55 @@ module moonbags::staking_test {
             assert!(balance == 15_000, EOutputEqualToExpected);
             assert!(acc_reward_index == 180_000_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 0, EOutputEqualToExpected); // Earned should be 0 after claiming
+
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(ADMIN); // admin create creator pool
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+
+            // Create staking pool
+            moonbags_stake::initialize_creator_pool<StakingToken>(&mut config, USER_1, &clock, scenario.ctx());
+
+            let creator_pool = get_creator_pool(&config);
+
+            // Check staking pool values
+            let reward_sui = moonbags_stake::get_creator_pool_reward_value_for_testing(creator_pool);
+            assert!(reward_sui == 0, EOutputEqualToExpected);
+
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(ADMIN); // admin deposit 1000 sui to creator pool
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+
+            let reward_amount = 1_000;
+            let reward_coin = coin::mint_for_testing<SUI>(reward_amount, scenario.ctx());
+
+            moonbags_stake::deposit_creator_pool<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
+
+            let creator_pool = get_creator_pool(&config);
+
+            // Check staking pool values
+            let reward_sui = moonbags_stake::get_creator_pool_reward_value_for_testing(creator_pool);
+
+            assert!(reward_sui == 1_000, EOutputEqualToExpected);
+
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(USER_1); // user_1 claim from creator pool
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+
+            let reward_sui = moonbags_stake::claim_creator_pool<StakingToken>(&mut config, &clock, scenario.ctx());
+
+            assert!(reward_sui == 1_000, EOutputEqualToExpected);
 
             test_scenario::return_shared(config);
             clock::destroy_for_testing(clock);
