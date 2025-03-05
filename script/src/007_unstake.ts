@@ -1,6 +1,6 @@
 import { TransactionBlock } from "@mysten/sui.js/transactions";
 import readline from "readline";
-import { config_address, package_address, processResult } from "./utils";
+import { stakeConfigAddress, packageAddress, processResult } from "./utils";
 
 const unstake = async (stakingToken: string, unstakeAmount: number) => {
   try {
@@ -12,13 +12,13 @@ const unstake = async (stakingToken: string, unstakeAmount: number) => {
     tx.setGasBudget(30000000);
 
     // Fetch required objects
-    const configuration = tx.object(config_address);
+    const configuration = tx.object(stakeConfigAddress);
     const clock = tx.object("0x6"); // Clock object
 
     // Call the unstake function
     // Note: We're passing the amount directly as a u64
     tx.moveCall({
-      target: `${package_address}::moonbags_stake::unstake`,
+      target: `${packageAddress}::moonbags_stake::unstake`,
       typeArguments: [stakingToken],
       arguments: [
         configuration,

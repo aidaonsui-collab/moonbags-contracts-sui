@@ -1,6 +1,6 @@
 import { TransactionBlock } from "@mysten/sui.js/transactions";
 import readline from "readline";
-import { config_address, package_address, processResult } from "./utils";
+import { stakeConfigAddress, packageAddress, processResult } from "./utils";
 
 const depositCreatorPool = async (
   creatorAddress: string,
@@ -14,7 +14,7 @@ const depositCreatorPool = async (
     const tx = new TransactionBlock();
     tx.setGasBudget(30000000);
 
-    const configuration = tx.object(config_address);
+    const configuration = tx.object(stakeConfigAddress);
     const clock = tx.object("0x6");
 
     const [rewardSuiCoin] = tx.splitCoins(tx.gas, [
@@ -22,7 +22,7 @@ const depositCreatorPool = async (
     ]);
 
     tx.moveCall({
-      target: `${package_address}::moonbags_stake::deposit_creator_pool`,
+      target: `${packageAddress}::moonbags_stake::deposit_creator_pool`,
       typeArguments: [],
       arguments: [configuration, rewardSuiCoin, tx.pure(creatorAddress), clock],
     });

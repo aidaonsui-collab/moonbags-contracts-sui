@@ -1,9 +1,9 @@
 import { TransactionBlock } from "@mysten/sui.js/transactions";
 import {
   client,
-  config_address,
+  stakeConfigAddress,
   keypair,
-  package_address,
+  packageAddress,
   processResult,
 } from "./utils";
 import readline from "readline";
@@ -15,7 +15,7 @@ const stake = async (token: string, amount: number) => {
     const tx = new TransactionBlock();
     tx.setGasBudget(100000000);
 
-    const configuration = tx.object(config_address);
+    const configuration = tx.object(stakeConfigAddress);
     const clock = tx.object("0x6");
 
     const coinInputObjects = await client.getCoins({
@@ -39,7 +39,7 @@ const stake = async (token: string, amount: number) => {
 
     // Move call to create the pool
     tx.moveCall({
-      target: `${package_address}::moonbags_stake::stake`,
+      target: `${packageAddress}::moonbags_stake::stake`,
       typeArguments: [token],
       arguments: [configuration, stakingCoin, clock],
     });

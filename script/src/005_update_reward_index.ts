@@ -1,6 +1,6 @@
 import { TransactionBlock } from "@mysten/sui.js/transactions";
 import readline from "readline";
-import { config_address, package_address, processResult } from "./utils";
+import { stakeConfigAddress, packageAddress, processResult } from "./utils";
 
 const updateRewardIndex = async (
   stakingToken: string,
@@ -17,7 +17,7 @@ const updateRewardIndex = async (
     tx.setGasBudget(100000000);
 
     // Fetch required objects
-    const configuration = tx.object(config_address);
+    const configuration = tx.object(stakeConfigAddress);
     const clock = tx.object("0x6"); // Clock object
 
     const [rewardSuiCoin] = tx.splitCoins(tx.gas, [
@@ -25,7 +25,7 @@ const updateRewardIndex = async (
     ]);
 
     tx.moveCall({
-      target: `${package_address}::moonbags_stake::update_reward_index`,
+      target: `${packageAddress}::moonbags_stake::update_reward_index`,
       typeArguments: [stakingToken],
       arguments: [configuration, rewardSuiCoin, clock],
     });

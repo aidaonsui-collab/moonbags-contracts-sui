@@ -1,6 +1,6 @@
 import { TransactionBlock } from "@mysten/sui.js/transactions";
 import readline from "readline";
-import { config_address, package_address, processResult } from "./utils";
+import { stakeConfigAddress, packageAddress, processResult } from "./utils";
 
 const initializeCreatorPool = async (creatorAddress: string) => {
   try {
@@ -9,11 +9,11 @@ const initializeCreatorPool = async (creatorAddress: string) => {
     const tx = new TransactionBlock();
     tx.setGasBudget(30000000);
 
-    const configuration = tx.object(config_address);
+    const configuration = tx.object(stakeConfigAddress);
     const clock = tx.object("0x6");
 
     tx.moveCall({
-      target: `${package_address}::moonbags_stake::initialize_creator_pool`,
+      target: `${packageAddress}::moonbags_stake::initialize_creator_pool`,
       typeArguments: [],
       arguments: [configuration, tx.pure(creatorAddress), clock],
     });
