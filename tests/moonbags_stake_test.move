@@ -29,10 +29,12 @@ module moonbags::staking_test {
     }
 
     #[test_only]
-    public(package) fun get_creator_pool(config: &Configuration, creator: address) : &CreatorPool {
+    public(package) fun get_creator_pool(config: &Configuration) : &CreatorPool<StakingToken> {
+        let creator_pool_type_name = type_name::get<StakingPool<StakingToken>>();
+        let creator_pool_address = type_name::get_address(&creator_pool_type_name);
         let config_id = moonbags_stake::get_configuration_id_for_testing(config);
-        let staking_pool = dynamic_object_field::borrow(config_id, creator.to_ascii_string());
-        staking_pool
+        let creator_pool = dynamic_object_field::borrow(config_id, creator_pool_address);
+        creator_pool
     }
 
     #[test_only]
@@ -166,7 +168,7 @@ module moonbags::staking_test {
             let (_, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
             // Reward index should be updated: (reward_amount * MULTIPLIER) / total_supply
-            assert!(reward_index == 100_000_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 100_000_000_000_000_000, EOutputEqualToExpected);
             assert!(sui_token_value == 1_000, EOutputEqualToExpected); 
             assert!(staking_token_value == 10_000, EOutputEqualToExpected);
             assert!(total_supply == 10_000, EOutputEqualToExpected);
@@ -193,13 +195,13 @@ module moonbags::staking_test {
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
             assert!(sui_token_value == 1_000, EOutputEqualToExpected);
             assert!(total_supply == 25_000, EOutputEqualToExpected);
-            assert!(reward_index == 100_000_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 100_000_000_000_000_000, EOutputEqualToExpected);
 
             let staking_account = get_staking_account(pool_id, USER_2);
             let (balance, reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
 
             assert!(balance == 15_000, EOutputEqualToExpected);
-            assert!(reward_index == 100_000_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 100_000_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 0, EOutputEqualToExpected);
 
             let user2_reward_earned = moonbags_stake::calculate_rewards_earned<StakingToken>(&config, scenario.ctx());
@@ -224,7 +226,7 @@ module moonbags::staking_test {
             let (_, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
             // Reward index should be updated: (reward_amount * MULTIPLIER) / total_supply
-            assert!(reward_index == 140_000_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 140_000_000_000_000_000, EOutputEqualToExpected);
             assert!(sui_token_value == 2_000, EOutputEqualToExpected); 
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
             assert!(total_supply == 25_000, EOutputEqualToExpected);
@@ -252,14 +254,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
             assert!(sui_token_value == 600, EOutputEqualToExpected);
             assert!(total_supply == 25_000, EOutputEqualToExpected);
-            assert!(reward_index == 140_000_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 140_000_000_000_000_000, EOutputEqualToExpected);
 
             // Verify user's staking account
             let staking_account = get_staking_account(pool_id, USER_1);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
             
             assert!(balance == 10_000, EOutputEqualToExpected);
-            assert!(acc_reward_index == 140_000_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 140_000_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 0, EOutputEqualToExpected); // Earned should be 0 after claiming
 
             test_scenario::return_shared(config);
@@ -283,7 +285,7 @@ module moonbags::staking_test {
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
             assert!(sui_token_value == 1_600, EOutputEqualToExpected); 
             assert!(total_supply == 25_000, EOutputEqualToExpected);
-            assert!(reward_index == 180_000_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 180_000_000_000_000_000, EOutputEqualToExpected);
 
             test_scenario::return_shared(config);
             clock::destroy_for_testing(clock);
@@ -303,14 +305,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 20_000, EOutputEqualToExpected);
             assert!(sui_token_value == 1_600, EOutputEqualToExpected);
             assert!(total_supply == 20_000, EOutputEqualToExpected);
-            assert!(reward_index == 180_000_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 180_000_000_000_000_000, EOutputEqualToExpected);
 
             // Verify user's staking account after unstake
             let staking_account = get_staking_account(pool_id, USER_1);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
 
             assert!(balance == 5_000, EOutputEqualToExpected);
-            assert!(acc_reward_index == 180_000_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 180_000_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 400, EOutputEqualToExpected);
 
             test_scenario::return_shared(config);
@@ -336,14 +338,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 20_000, EOutputEqualToExpected);
             assert!(sui_token_value == 400, EOutputEqualToExpected);
             assert!(total_supply == 20_000, EOutputEqualToExpected);
-            assert!(reward_index == 180_000_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 180_000_000_000_000_000, EOutputEqualToExpected);
 
             // Verify user's staking account
             let staking_account = get_staking_account(pool_id, USER_2);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
             
             assert!(balance == 15_000, EOutputEqualToExpected);
-            assert!(acc_reward_index == 180_000_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 180_000_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 0, EOutputEqualToExpected); // Earned should be 0 after claiming
 
             test_scenario::return_shared(config);
@@ -370,9 +372,9 @@ module moonbags::staking_test {
             let clock = clock::create_for_testing(scenario.ctx());
 
             // Create staking pool
-            moonbags_stake::initialize_creator_pool(&mut config, USER_1, &clock, scenario.ctx());
+            moonbags_stake::initialize_creator_pool<StakingToken>(&mut config, USER_1, &clock, scenario.ctx());
 
-            let creator_pool = get_creator_pool(&config, USER_1);
+            let creator_pool = get_creator_pool(&config);
 
             // Check staking pool values
             let reward_sui = moonbags_stake::get_creator_pool_reward_value_for_testing(creator_pool);
@@ -389,9 +391,9 @@ module moonbags::staking_test {
             let reward_amount = 1_000;
             let reward_coin = coin::mint_for_testing<SUI>(reward_amount, scenario.ctx());
 
-            moonbags_stake::deposit_creator_pool(&mut config, reward_coin, USER_1, &clock, scenario.ctx());
+            moonbags_stake::deposit_creator_pool<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
 
-            let creator_pool = get_creator_pool(&config, USER_1);
+            let creator_pool = get_creator_pool(&config);
 
             // Check staking pool values
             let reward_sui = moonbags_stake::get_creator_pool_reward_value_for_testing(creator_pool);
@@ -406,7 +408,7 @@ module moonbags::staking_test {
             let mut config = scenario.take_shared<Configuration>();
             let clock = clock::create_for_testing(scenario.ctx());
 
-            let reward_sui = moonbags_stake::claim_creator_pool(&mut config, USER_1, &clock, scenario.ctx());
+            let reward_sui = moonbags_stake::claim_creator_pool<StakingToken>(&mut config, &clock, scenario.ctx());
 
             assert!(reward_sui == 1_000, EOutputEqualToExpected);
 

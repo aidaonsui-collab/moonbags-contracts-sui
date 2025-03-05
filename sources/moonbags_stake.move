@@ -1,5 +1,6 @@
 #[allow(lint(self_transfer))]
 module moonbags::moonbags_stake {
+    // === Imports ===
     use std::type_name;
     use std::ascii::String;
 
@@ -9,6 +10,7 @@ module moonbags::moonbags_stake {
     use sui::event::emit;
     use sui::clock::{Clock, Self};
 
+    // === Errors ===
     const EStakingPoolNotExist: u64 = 1;
     const EStakingCreatorNotExist: u64 = 2;
     const EStakingAccountNotExist: u64 = 3;
@@ -19,8 +21,10 @@ module moonbags::moonbags_stake {
     const EPoolAlreadyExist: u64 = 8;
     const ERewardToClaimNotValid: u64 = 9;
 
+    // === Constants ===
     const MULTIPLIER: u128 = 1_000_000_000_000_000_000; // 1e18
 
+    // === Structs ===
     public struct Configuration has store, key {
         id: UID,
         version: u64,
@@ -37,7 +41,7 @@ module moonbags::moonbags_stake {
     }
 
     #[allow(lint(coin_field))]
-    public struct CreatorPool has key, store {
+    public struct CreatorPool<phantom StakingToken> has key, store {
         id: UID,
         sui_token: Coin<SUI>,
         creator: address,
@@ -50,57 +54,66 @@ module moonbags::moonbags_stake {
         earned: u64,
     }
 
+    // === Events ===
     public struct InitializeStakingPoolEvent has copy, drop, store {
+        token_address: String,
         staking_pool: ID,
-        initializer: address,
+        initializer: String,
         timestamp: u64,
     }
 
     public struct InitializeCreatorPoolEvent has copy, drop, store {
+        token_address: String,
         creator_pool: ID,
-        initializer: address,
-        creator: address,
+        initializer: String,
+        creator: String,
         timestamp: u64,
     }
 
     public struct StakeEvent has copy, drop, store {
+        token_address: String,
         staking_pool: ID,
-        staker: address,
+        staker: String,
         amount: u64,
         timestamp: u64,
     }
 
     public struct UnstakeEvent has copy, drop, store {
+        token_address: String,
         staking_pool: ID,
-        unstaker: address,
+        unstaker: String,
         amount: u64,
         timestamp: u64,
     }
 
     public struct UpdateRewardIndexEvent has copy, drop, store {
+        token_address: String,
         staking_pool: ID,
-        reward_updater: address,
+        reward_updater: String,
         reward: u64,
         timestamp: u64,
     }
 
     public struct DepositPoolCreatorEvent has copy, drop, store {
+        token_address: String,
         creator_pool: ID,
-        depositor: address,
+        depositor: String,
         amount: u64,
         timestamp: u64,
     }
 
     public struct ClaimStakingPoolEvent has copy, drop, store {
+        token_address: String,
         staking_pool: ID,
-        claimer: address,
+        claimer: String,
         reward: u64,
         timestamp: u64,
     }
     
     public struct ClaimCreatorPoolEvent has copy, drop, store {
+        token_address: String,
         creator_pool: ID,
-        claimer: address,
+        claimer: String,
         reward: u64,
         timestamp: u64,
     }
@@ -114,6 +127,7 @@ module moonbags::moonbags_stake {
         transfer::public_share_object<Configuration>(configuration);
     }
 
+    // === Public Functions ===
     public fun initialize_staking_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) {
         let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
         let staking_pool_address = type_name::get_address(&staking_pool_type_name);
@@ -128,9 +142,10 @@ module moonbags::moonbags_stake {
             reward_index        : 0,
         };
 
-        let initialize_staking_pool_event = InitializeStakingPoolEvent{
+        let initialize_staking_pool_event = InitializeStakingPoolEvent {
+            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
             staking_pool        : object::id(&staking_pool),
-            initializer         : ctx.sender(),
+            initializer         : ctx.sender().to_ascii_string(),
             timestamp           : clock::timestamp_ms(clock),
         };
         emit<InitializeStakingPoolEvent>(initialize_staking_pool_event);
@@ -138,27 +153,30 @@ module moonbags::moonbags_stake {
         dynamic_object_field::add(&mut configuration.id,  staking_pool_address, staking_pool);
     }
 
-    public fun initialize_creator_pool(configuration: &mut Configuration, creator: address, clock: &Clock, ctx: &mut TxContext) {
-        assert!(!dynamic_object_field::exists_(&configuration.id, creator.to_ascii_string()), EPoolAlreadyExist);
+    public fun initialize_creator_pool<StakingToken>(configuration: &mut Configuration, creator: address, clock: &Clock, ctx: &mut TxContext) {
+        let creator_pool_type_name = type_name::get<CreatorPool<StakingToken>>();
+        let creator_pool_address = type_name::get_address(&creator_pool_type_name);
 
-        let creator_pool = CreatorPool {
+        assert!(!dynamic_object_field::exists_(&configuration.id, creator_pool_address), EPoolAlreadyExist);
+
+        let creator_pool = CreatorPool<StakingToken> {
             id                  : object::new(ctx),
             sui_token           : coin::zero<SUI>(ctx),
             creator             : creator,
         };
 
-        let initialize_staking_pool_event = InitializeCreatorPoolEvent{
+        let initialize_staking_pool_event = InitializeCreatorPoolEvent {
+            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
             creator_pool        : object::id(&creator_pool),
-            initializer         : ctx.sender(),
-            creator             : creator,
+            initializer         : ctx.sender().to_ascii_string(),
+            creator             : creator.to_ascii_string(),
             timestamp           : clock::timestamp_ms(clock),
         };
         emit<InitializeCreatorPoolEvent>(initialize_staking_pool_event);
 
-        dynamic_object_field::add(&mut configuration.id,  creator.to_ascii_string(), creator_pool);
+        dynamic_object_field::add(&mut configuration.id,  creator_pool_address, creator_pool);
     }
 
-    // Update adding rewards and update reward index
     public fun update_reward_index<StakingToken>(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
         let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
         let staking_pool_address = type_name::get_address(&staking_pool_type_name);
@@ -180,20 +198,24 @@ module moonbags::moonbags_stake {
         coin::join(&mut staking_pool.sui_token, reward_sui_coin);
 
         let update_reward_index_event = UpdateRewardIndexEvent {
+            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
             staking_pool        : object::id(staking_pool),
-            reward_updater      : ctx.sender(),
+            reward_updater      : ctx.sender().to_ascii_string(),
             reward              : reward_amount,
             timestamp           : clock::timestamp_ms(clock)
         };
         emit<UpdateRewardIndexEvent>(update_reward_index_event);
     }
 
-    public fun deposit_creator_pool(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, creator: address, clock: &Clock, ctx: &mut TxContext) {
-        assert!(dynamic_object_field::exists_(&configuration.id, creator.to_ascii_string()), EStakingCreatorNotExist);
+    public fun deposit_creator_pool<StakingToken>(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
+        let creator_pool_type_name = type_name::get<CreatorPool<StakingToken>>();
+        let creator_pool_address = type_name::get_address(&creator_pool_type_name);
 
-        let creator_pool = dynamic_object_field::borrow_mut<String, CreatorPool>(
+        assert!(dynamic_object_field::exists_(&configuration.id, creator_pool_address), EStakingCreatorNotExist);
+
+        let creator_pool = dynamic_object_field::borrow_mut<String, CreatorPool<StakingToken>>(
             &mut configuration.id,
-            creator.to_ascii_string()
+            creator_pool_address
         );
 
         let reward_amount = coin::value<SUI>(&reward_sui_coin);
@@ -202,44 +224,13 @@ module moonbags::moonbags_stake {
         coin::join(&mut creator_pool.sui_token, reward_sui_coin);
 
         let update_reward_index_event = DepositPoolCreatorEvent {
+            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
             creator_pool        : object::id(creator_pool),
-            depositor           : ctx.sender(),
+            depositor           : ctx.sender().to_ascii_string(),
             amount              : reward_amount,
             timestamp           : clock::timestamp_ms(clock)
         };
         emit<DepositPoolCreatorEvent>(update_reward_index_event);
-    }
-
-    // Calculates the rewards earned
-    fun calculate_rewards(staking_pool_reward_index: u128, staking_account: &StakingAccount): u64 {
-        let shares = staking_account.balance as u128;
-        ((shares * (staking_pool_reward_index - staking_account.reward_index)) / MULTIPLIER) as u64
-    }
-
-    // Get the rewards earned of sender
-    public fun calculate_rewards_earned<StakingToken>(configuration: &Configuration, ctx: &mut TxContext): u64 {
-        let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
-        let staking_pool_address = type_name::get_address(&staking_pool_type_name);
-
-        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_address), EStakingPoolNotExist);
-
-        let staking_pool = dynamic_object_field::borrow<String, StakingPool<StakingToken>>(
-            &configuration.id,
-            staking_pool_address
-        );
-
-        let staker_address = ctx.sender();
-        assert!(dynamic_object_field::exists_(&staking_pool.id, staker_address), EStakingAccountNotExist);
-
-        let staking_account: &StakingAccount = dynamic_object_field::borrow(&staking_pool.id, staker_address);
-
-        staking_account.earned + calculate_rewards(staking_pool.reward_index, staking_account)
-    }
-
-    // Update earned and reward index
-    fun update_rewards(staking_pool_reward_index: u128, staking_account: &mut StakingAccount) {
-        staking_account.earned = staking_account.earned + calculate_rewards(staking_pool_reward_index, staking_account);
-        staking_account.reward_index = staking_pool_reward_index;
     }
 
     public fun stake<StakingToken>(configuration: &mut Configuration, staking_coin: Coin<StakingToken>, clock: &Clock, ctx: &mut TxContext) {
@@ -279,8 +270,9 @@ module moonbags::moonbags_stake {
         coin::join(&mut staking_pool.staking_token, staking_coin);
 
         let stake_event = StakeEvent {
+            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
             staking_pool        : object::id(staking_pool),
-            staker              : staker_address,
+            staker              : staker_address.to_ascii_string(),
             amount              : amount_token_staking_in,
             timestamp           : clock::timestamp_ms(clock),
         };
@@ -317,8 +309,9 @@ module moonbags::moonbags_stake {
         transfer::public_transfer<Coin<StakingToken>>(unstake_coin, staker_address);
 
         let unstake_event = UnstakeEvent {
+            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
             staking_pool        : object::id(staking_pool),
-            unstaker            : staker_address,
+            unstaker            : staker_address.to_ascii_string(),
             amount              : unstake_amount,
             timestamp           : clock::timestamp_ms(clock),
         };
@@ -353,8 +346,9 @@ module moonbags::moonbags_stake {
         transfer::public_transfer<Coin<SUI>>(sui_coin, staker_address);
 
         let claim_staking_pool_event = ClaimStakingPoolEvent {
+            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
             staking_pool        : object::id(staking_pool),
-            claimer             : staker_address,
+            claimer             : staker_address.to_ascii_string(),
             reward              : reward_amount,
             timestamp           : clock::timestamp_ms(clock),
         };
@@ -363,16 +357,18 @@ module moonbags::moonbags_stake {
         reward_amount
     }
 
-    public fun claim_creator_pool(configuration: &mut Configuration, creator: address, clock: &Clock, ctx: &mut TxContext) : u64 {
-        assert!(dynamic_object_field::exists_(&configuration.id, creator.to_ascii_string()), EStakingCreatorNotExist);
-        assert!(creator == ctx.sender(), EInvalidCreator);
+    public fun claim_creator_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) : u64 {
+        let creator_pool_type_name = type_name::get<CreatorPool<StakingToken>>();
+        let creator_pool_address = type_name::get_address(&creator_pool_type_name);
 
-        let creator_pool = dynamic_object_field::borrow_mut<String, CreatorPool>(
+        assert!(dynamic_object_field::exists_(&configuration.id, creator_pool_address), EStakingCreatorNotExist);
+
+        let creator_pool = dynamic_object_field::borrow_mut<String, CreatorPool<StakingToken>>(
             &mut configuration.id,
-            creator.to_ascii_string(),
+            creator_pool_address,
         );
 
-        assert!(creator_pool.creator == creator, EInvalidCreator);
+        assert!(creator_pool.creator == ctx.sender(), EInvalidCreator);
 
         let reward_amount = coin::value<SUI>(&creator_pool.sui_token);
         assert!(reward_amount > 0, ERewardToClaimNotValid);
@@ -381,16 +377,49 @@ module moonbags::moonbags_stake {
         transfer::public_transfer<Coin<SUI>>(sui_coin, creator_pool.creator);    
 
         let claim_creator_pool_event = ClaimCreatorPoolEvent {
-            creator_pool: object::id(creator_pool),
-            claimer: ctx.sender(),
-            reward: reward_amount,
-            timestamp: clock::timestamp_ms(clock),
+            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
+            creator_pool        : object::id(creator_pool),
+            claimer             : ctx.sender().to_ascii_string(),
+            reward              : reward_amount,
+            timestamp           : clock::timestamp_ms(clock),
         };
         emit<ClaimCreatorPoolEvent>(claim_creator_pool_event);
 
         reward_amount
     }
 
+    // === View Functions ===
+    public fun calculate_rewards_earned<StakingToken>(configuration: &Configuration, ctx: &mut TxContext): u64 {
+        let staking_pool_type_name = type_name::get<StakingPool<StakingToken>>();
+        let staking_pool_address = type_name::get_address(&staking_pool_type_name);
+
+        assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_address), EStakingPoolNotExist);
+
+        let staking_pool = dynamic_object_field::borrow<String, StakingPool<StakingToken>>(
+            &configuration.id,
+            staking_pool_address
+        );
+
+        let staker_address = ctx.sender();
+        assert!(dynamic_object_field::exists_(&staking_pool.id, staker_address), EStakingAccountNotExist);
+
+        let staking_account: &StakingAccount = dynamic_object_field::borrow(&staking_pool.id, staker_address);
+
+        staking_account.earned + calculate_rewards(staking_pool.reward_index, staking_account)
+    }
+
+    // === Private Functions ===
+    fun calculate_rewards(staking_pool_reward_index: u128, staking_account: &StakingAccount): u64 {
+        let shares = staking_account.balance as u128;
+        ((shares * (staking_pool_reward_index - staking_account.reward_index)) / MULTIPLIER) as u64
+    }
+
+    fun update_rewards(staking_pool_reward_index: u128, staking_account: &mut StakingAccount) {
+        staking_account.earned = staking_account.earned + calculate_rewards(staking_pool_reward_index, staking_account);
+        staking_account.reward_index = staking_pool_reward_index;
+    }
+
+    // === Test Functions ===
     #[test_only]
     public(package) fun init_for_testing(ctx: &mut TxContext) {
         init(ctx);
@@ -422,7 +451,7 @@ module moonbags::moonbags_stake {
     }
 
    #[test_only]
-    public(package) fun get_creator_pool_reward_value_for_testing(pool: &CreatorPool): u64 {
+    public(package) fun get_creator_pool_reward_value_for_testing<StakingToken>(pool: &CreatorPool<StakingToken>): u64 {
         coin::value(&pool.sui_token)
     }
 }
