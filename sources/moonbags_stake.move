@@ -142,7 +142,7 @@ module moonbags::moonbags_stake {
         };
 
         let initialize_staking_pool_event = InitializeStakingPoolEvent {
-            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
+            token_address       : type_name::into_string(type_name::get<StakingToken>()),
             staking_pool        : object::id(&staking_pool),
             initializer         : ctx.sender().to_ascii_string(),
             timestamp           : clock::timestamp_ms(clock),
@@ -164,7 +164,7 @@ module moonbags::moonbags_stake {
         };
 
         let initialize_staking_pool_event = InitializeCreatorPoolEvent {
-            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
+            token_address       : type_name::into_string(type_name::get<StakingToken>()),
             creator_pool        : object::id(&creator_pool),
             initializer         : ctx.sender().to_ascii_string(),
             creator             : creator.to_ascii_string(),
@@ -195,7 +195,7 @@ module moonbags::moonbags_stake {
         coin::join(&mut staking_pool.sui_token, reward_sui_coin);
 
         let update_reward_index_event = UpdateRewardIndexEvent {
-            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
+            token_address       : type_name::into_string(type_name::get<StakingToken>()),
             staking_pool        : object::id(staking_pool),
             reward_updater      : ctx.sender().to_ascii_string(),
             reward              : reward_amount,
@@ -220,7 +220,7 @@ module moonbags::moonbags_stake {
         coin::join(&mut creator_pool.sui_token, reward_sui_coin);
 
         let update_reward_index_event = DepositPoolCreatorEvent {
-            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
+            token_address       : type_name::into_string(type_name::get<StakingToken>()),
             creator_pool        : object::id(creator_pool),
             depositor           : ctx.sender().to_ascii_string(),
             amount              : reward_amount,
@@ -265,7 +265,7 @@ module moonbags::moonbags_stake {
         coin::join(&mut staking_pool.staking_token, staking_coin);
 
         let stake_event = StakeEvent {
-            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
+            token_address       : type_name::into_string(type_name::get<StakingToken>()),
             staking_pool        : object::id(staking_pool),
             staker              : staker_address.to_ascii_string(),
             amount              : amount_token_staking_in,
@@ -303,7 +303,7 @@ module moonbags::moonbags_stake {
         transfer::public_transfer<Coin<StakingToken>>(unstake_coin, staker_address);
 
         let unstake_event = UnstakeEvent {
-            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
+            token_address       : type_name::into_string(type_name::get<StakingToken>()),
             staking_pool        : object::id(staking_pool),
             unstaker            : staker_address.to_ascii_string(),
             amount              : unstake_amount,
@@ -339,7 +339,7 @@ module moonbags::moonbags_stake {
         transfer::public_transfer<Coin<SUI>>(sui_coin, staker_address);
 
         let claim_staking_pool_event = ClaimStakingPoolEvent {
-            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
+            token_address       : type_name::into_string(type_name::get<StakingToken>()),
             staking_pool        : object::id(staking_pool),
             claimer             : staker_address.to_ascii_string(),
             reward              : reward_amount,
@@ -369,7 +369,7 @@ module moonbags::moonbags_stake {
         transfer::public_transfer<Coin<SUI>>(sui_coin, creator_pool.creator);    
 
         let claim_creator_pool_event = ClaimCreatorPoolEvent {
-            token_address       : type_name::get_address(&type_name::get<StakingToken>()),
+            token_address       : type_name::into_string(type_name::get<StakingToken>()),
             creator_pool        : object::id(creator_pool),
             claimer             : ctx.sender().to_ascii_string(),
             reward              : reward_amount,
