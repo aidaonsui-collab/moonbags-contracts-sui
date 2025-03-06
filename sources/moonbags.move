@@ -232,7 +232,7 @@ module moonbags::moonbags {
     }
 
     fun assert_lp_value_is_increased_or_not_changed(before_token_reserves: u64, before_sui_reserves: u64, after_token_reserves: u64, after_sui_reserves: u64) {
-        assert!((before_token_reserves as u128) * (before_sui_reserves as u128) <= (after_token_reserves as u128) * (after_sui_reserves as u128), 2);
+        assert!((before_token_reserves as u128) * (before_sui_reserves as u128) <= (after_token_reserves as u128) * (after_sui_reserves as u128), EInvalidInput);
     }
 
     fun assert_version(version: u64) {
@@ -281,7 +281,7 @@ module moonbags::moonbags {
         emit<TradedEvent>(traded_event);
     }
 
-    public entry fun buy_exact_in<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun buy_exact_in<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out_min: u64, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         assert_version(configuration.version);
         let amount_sui_in = coin::value<SUI>(&coin_sui);
 
@@ -299,8 +299,11 @@ module moonbags::moonbags {
 
         let amount_out_swap = curves::calculate_remove_liquidity_return(pool.virtual_sui_reserves, pool.virtual_token_reserves, amount_in_swap) - 1;
         let actual_token_amount_out = min(amount_out_swap, token_reserves_in_pool);
+
+        assert!(actual_token_amount_out >= amount_out_min, EInvalidInput);
+
         let actual_sui_amount_in = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_token_amount_out) + 1;
-        assert!(amount_sui_in >= amount_in_swap + fee, EInsufficientInput);
+        assert!(amount_in_swap >= actual_sui_amount_in, EInsufficientInput);
 
         let sui_amount_remain = amount_in_swap - actual_sui_amount_in;
 
@@ -588,7 +591,7 @@ module moonbags::moonbags {
 
         let amount_sui_out = curves::calculate_remove_liquidity_return(pool.virtual_token_reserves, pool.virtual_sui_reserves, amount_in);
         let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_out), utils::from_u64(configuration.platform_fee)), utils::from_u64(10000)));
-        assert!(amount_sui_out - fee >= amount_out_min, 2);
+        assert!(amount_sui_out - fee >= amount_out_min, EInvalidInput);
         let (coin_token_out, mut coin_sui_out) = swap<Token>(pool, coin_token, coin::zero<SUI>(ctx), 0, amount_sui_out, ctx);
         pool.virtual_sui_reserves = pool.virtual_sui_reserves - coin::value<SUI>(&coin_sui_out);
 
@@ -621,7 +624,7 @@ module moonbags::moonbags {
 
         let amount_sui_out = curves::calculate_remove_liquidity_return(pool.virtual_token_reserves, pool.virtual_sui_reserves, amount_in);
         let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_out), utils::from_u64(configuration.platform_fee)), utils::from_u64(10000)));
-        assert!(amount_sui_out - fee >= amount_out_min, 2);
+        assert!(amount_sui_out - fee >= amount_out_min, EInvalidInput);
         let (coin_token_out, mut coin_sui_out) = swap<Token>(pool, coin_token, coin::zero<SUI>(ctx), 0, amount_sui_out, ctx);
         pool.virtual_sui_reserves = pool.virtual_sui_reserves - coin::value<SUI>(&coin_sui_out);
 
