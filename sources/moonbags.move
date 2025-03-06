@@ -19,7 +19,8 @@ module moonbags::moonbags {
     use cetus_clmm::config::GlobalConfig;
     use cetus_clmm::position::Position;
 
-    const DEFAULT_THRESHOLD: u64 = 3000000000000; // 3000 SUI
+    const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
+    const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
     const VERSION: u64 = 1;
 
     // const ENotHavePermission: u64 = 1;
@@ -132,7 +133,7 @@ module moonbags::moonbags {
             admin: ctx.sender(),
             platform_fee: 50,
             graduated_fee: 300000000000,
-            initial_virtual_sui_reserves: 3000000000000,
+            initial_virtual_sui_reserves: 3000000000, // 3 sui
             initial_virtual_token_reserves: 10000000000000000,
             remain_token_reserves: 2000000000000000,
             token_decimals: 6,
@@ -165,6 +166,9 @@ module moonbags::moonbags {
         assert_version(configuration.version);
         assert!(coin::total_supply<Token>(&treasury_cap) == 0, EExistTokenSupply);
 
+        let threshold = option::get_with_default(&threshold, DEFAULT_THRESHOLD);
+        assert!(threshold >= MINIMUM_THRESHOLD, EInvalidInput);
+
         let pool = Pool<Token>{
             id                     : object::new(ctx),
             real_sui_reserves      : coin::zero<SUI>(ctx),
@@ -172,7 +176,7 @@ module moonbags::moonbags {
             virtual_token_reserves : configuration.initial_virtual_token_reserves,
             virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
             remain_token_reserves  : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
-            threshold              : option::get_with_default(&threshold, DEFAULT_THRESHOLD),
+            threshold              : threshold,
             is_completed           : false,
         };
 
@@ -478,6 +482,9 @@ module moonbags::moonbags {
         assert_version(configuration.version);
         assert!(coin::total_supply<Token>(&treasury_cap) == 0, EExistTokenSupply);
 
+        let threshold = option::get_with_default(&threshold, DEFAULT_THRESHOLD);
+        assert!(threshold >= MINIMUM_THRESHOLD, EInvalidInput);
+
         let mut pool = Pool<Token>{
             id                     : object::new(ctx),
             real_sui_reserves      : coin::zero<SUI>(ctx),
@@ -485,7 +492,7 @@ module moonbags::moonbags {
             virtual_token_reserves : configuration.initial_virtual_token_reserves,
             virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
             remain_token_reserves  : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
-            threshold              : option::get_with_default(&threshold, DEFAULT_THRESHOLD),
+            threshold              : threshold,
             is_completed           : false,
         };
 
