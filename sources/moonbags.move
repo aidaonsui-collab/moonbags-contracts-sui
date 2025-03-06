@@ -722,6 +722,13 @@ module moonbags::moonbags {
         threshold_config.threshold = new_threshold;
     }
 
+    /*
+     * explanation of some magic numbers:
+     * cetus tick bound is (-443636, 443636)
+     * standard tick spacing is 60
+     * tick_upper_idx = 443636 - 443636 % 60 = 443580
+     * sqrt(340282366920938463463374607431768211456) = sqrt(2**128) = 2**64 (Q64)
+     */
     public entry fun init_cetus_pool<Token>(admin: address, coin_sui: Coin<SUI>, coin_token: Coin<Token>, pools: &mut Pools, config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         let token_amount = coin::value<Token>(&coin_token) as u256;
         let sui_amount = coin::value<SUI>(&coin_sui) as u256;
