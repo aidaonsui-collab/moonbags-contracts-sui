@@ -171,6 +171,7 @@ module moonbags::moonbags {
 
     public entry fun create<Token>(
         configuration: &mut Configuration,
+        stake_config: &mut StakeConfig,
         mut treasury_cap: coin::TreasuryCap<Token>,
         threshold: Option<u64>,
         clock: &Clock,
@@ -232,6 +233,9 @@ module moonbags::moonbags {
         };
         dynamic_object_field::add<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address), pool);
         emit<CreatedEvent>(created_event);
+
+        moonbags_stake::initialize_staking_pool<Token>(stake_config, clock, ctx);
+        moonbags_stake::initialize_creator_pool<Token>(stake_config, ctx.sender(), clock, ctx);
     }
 
     fun swap<Token>(pool: &mut Pool<Token>, coin_token: Coin<Token>, coin_sui: Coin<SUI>, amount_token_out: u64, amount_sui_out: u64, ctx: &mut TxContext) : (Coin<Token>, Coin<SUI>) {
@@ -489,6 +493,7 @@ module moonbags::moonbags {
 
     public entry fun create_and_first_buy<Token>(
         configuration: &mut Configuration,
+        stake_config: &mut StakeConfig,
         mut treasury_cap: coin::TreasuryCap<Token>,
         coin_sui: Coin<SUI>,
         amount_out: u64,
@@ -561,6 +566,9 @@ module moonbags::moonbags {
         };
         dynamic_object_field::add<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address), pool);
         emit<CreatedEvent>(created_event);
+
+        moonbags_stake::initialize_staking_pool<Token>(stake_config, clock, ctx);
+        moonbags_stake::initialize_creator_pool<Token>(stake_config, ctx.sender(), clock, ctx);
     }
 
     public entry fun create_threshold_config(_: &AdminCap, threshold: u64, ctx: &mut TxContext) {
