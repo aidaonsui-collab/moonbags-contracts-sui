@@ -22,10 +22,10 @@ module moonbags::moonbags_stake {
     const ERewardToClaimNotValid: u64 = 9;
 
     // === Constants ===
-    const MULTIPLIER: u128 = 1_000_000_000_000_000_000; // 1e18
+    const MULTIPLIER: u128 = 1_000_000_000_000_000_000; // 1e9
 
     // === Structs ===
-    public struct Configuration has store, key {
+    public struct Configuration has key, store {
         id: UID,
         version: u64,
         admin: address,
@@ -128,6 +128,15 @@ module moonbags::moonbags_stake {
     }
 
     // === Public Functions ===
+    
+    /**
+     * Initializes a new staking pool for a specific token type.
+     * 
+     * @typeArgument StakingToken - The token type that will be staked in this pool.
+     * @param configuration - Global configuration object.
+     * @param clock - clock for timestamp recording.
+     * @param ctx - Mutable transaction context.
+     */
     public fun initialize_staking_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) {
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
@@ -149,9 +158,18 @@ module moonbags::moonbags_stake {
         };
         emit<InitializeStakingPoolEvent>(initialize_staking_pool_event);
 
-        dynamic_object_field::add(&mut configuration.id,  staking_pool_type_name, staking_pool);
+        dynamic_object_field::add(&mut configuration.id, staking_pool_type_name, staking_pool);
     }
 
+    /**
+     * Initializes a creator pool for a specific token type.
+     * 
+     * @typeArgument StakingToken - The token type associated with this creator pool.
+     * @param configuration - Global configuration object.
+     * @param creator - Address of the creator for this pool.
+     * @param clock - Clock for timestamp recording.
+     * @param ctx - Mutable transaction context.
+     */
     public fun initialize_creator_pool<StakingToken>(configuration: &mut Configuration, creator: address, clock: &Clock, ctx: &mut TxContext) {
         let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
@@ -172,9 +190,18 @@ module moonbags::moonbags_stake {
         };
         emit<InitializeCreatorPoolEvent>(initialize_staking_pool_event);
 
-        dynamic_object_field::add(&mut configuration.id,  creator_pool_type_name, creator_pool);
+        dynamic_object_field::add(&mut configuration.id, creator_pool_type_name, creator_pool);
     }
 
+    /**
+     * Updates the reward index of a staking pool by adding new rewards.
+     * 
+     * @typeArgument StakingToken - The token type associated with the staking pool.
+     * @param configuration - Global configuration object.
+     * @param reward_sui_coin - SUI coin to be added as rewards to the staking pool.
+     * @param clock - Clock for timestamp recording.
+     * @param ctx - Mutable transaction context for sender information.
+     */
     public fun update_reward_index<StakingToken>(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
@@ -204,6 +231,15 @@ module moonbags::moonbags_stake {
         emit<UpdateRewardIndexEvent>(update_reward_index_event);
     }
 
+    /**
+     * Deposits SUI coin into a creator pool.
+     * 
+     * @typeArgument StakingToken - The token type associated with the creator pool.
+     * @param configuration - Global configuration object.
+     * @param reward_sui_coin - SUI coin to be deposited into the creator pool.
+     * @param clock - Clock for timestamp recording.
+     * @param ctx - Mutable transaction context for sender information.
+     */
     public fun deposit_creator_pool<StakingToken>(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
         let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
@@ -229,6 +265,15 @@ module moonbags::moonbags_stake {
         emit<DepositPoolCreatorEvent>(update_reward_index_event);
     }
 
+    /**
+     * Stakes tokens in a staking pool.
+     * 
+     * @typeArgument StakingToken - The token type to stake.
+     * @param configuration - Global configuration object.
+     * @param staking_coin - Tokens to stake.
+     * @param clock - Clock for timestamp recording.
+     * @param ctx - Mutable transaction context.
+     */
     public fun stake<StakingToken>(configuration: &mut Configuration, staking_coin: Coin<StakingToken>, clock: &Clock, ctx: &mut TxContext) {
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
         
@@ -274,6 +319,15 @@ module moonbags::moonbags_stake {
         emit<StakeEvent>(stake_event);
     }
 
+    /**
+     * Unstakes tokens from a staking pool.
+     * 
+     * @typeArgument StakingToken - The token type to unstake.
+     * @param configuration - Global configuration object.
+     * @param unstake_amount - Amount of tokens to unstake.
+     * @param clock - Clock for timestamp recording.
+     * @param ctx - Mutable transaction context for sender information.
+     */
     public fun unstake<StakingToken>(configuration: &mut Configuration, unstake_amount: u64, clock: &Clock, ctx: &mut TxContext) {
         assert!(unstake_amount > 0, EInvalidAmount);
 
@@ -312,6 +366,15 @@ module moonbags::moonbags_stake {
         emit<UnstakeEvent>(unstake_event);
     }
 
+    /**
+     * Claims rewards from a staking pool.
+     * 
+     * @typeArgument StakingToken - The token type associated with the staking pool.
+     * @param configuration - Global configuration object.
+     * @param clock - Clock for timestamp recording.
+     * @param ctx - Mutable transaction context for sender information.
+     * @return The amount of SUI claimed as rewards.
+     */
     public fun claim_staking_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) : u64 {
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
@@ -350,6 +413,15 @@ module moonbags::moonbags_stake {
         reward_amount
     }
 
+    /**
+     * Claims rewards from a creator pool.
+     * 
+     * @typeArgument StakingToken - The token type associated with the creator pool.
+     * @param configuration - Global configuration object.
+     * @param clock - Clock for timestamp recording.
+     * @param ctx - Mutable transaction context for sender information.
+     * @return The amount of SUI claimed from the creator pool.
+     */
     public fun claim_creator_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) : u64 {
         let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
@@ -366,7 +438,7 @@ module moonbags::moonbags_stake {
         assert!(reward_amount > 0, ERewardToClaimNotValid);
 
         let sui_coin = coin::split(&mut creator_pool.sui_token, reward_amount, ctx);
-        transfer::public_transfer<Coin<SUI>>(sui_coin, creator_pool.creator);    
+        transfer::public_transfer<Coin<SUI>>(sui_coin, creator_pool.creator);
 
         let claim_creator_pool_event = ClaimCreatorPoolEvent {
             token_address       : type_name::into_string(type_name::get<StakingToken>()),
@@ -381,6 +453,15 @@ module moonbags::moonbags_stake {
     }
 
     // === View Functions ===
+
+    /**
+     * Calculates the rewards earned by the sender for staking tokens.
+     * 
+     * @typeArgument StakingToken - The token type associated with the staking pool.
+     * @param configuration - Global configuration object.
+     * @param ctx - Mutable transaction context for sender information.
+     * @return The total amount of rewards earned.
+     */
     public fun calculate_rewards_earned<StakingToken>(configuration: &Configuration, ctx: &mut TxContext): u64 {
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
@@ -400,11 +481,26 @@ module moonbags::moonbags_stake {
     }
 
     // === Private Functions ===
+
+    /**
+     * Calculates the pending rewards for a staking account.
+     * 
+     * @param staking_pool_reward_index - Current reward index of the staking pool.
+     * @param staking_account - The staking account to calculate rewards for.
+     * @return The amount of pending rewards.
+     */
     fun calculate_rewards(staking_pool_reward_index: u128, staking_account: &StakingAccount): u64 {
         let shares = staking_account.balance as u128;
         ((shares * (staking_pool_reward_index - staking_account.reward_index)) / MULTIPLIER) as u64
     }
 
+
+    /**
+     * Updates the rewards earned by a staking account based on the current reward index.
+     * 
+     * @param staking_pool_reward_index - Current reward index of the staking pool.
+     * @param staking_account - The staking account to update rewards for.
+     */
     fun update_rewards(staking_pool_reward_index: u128, staking_account: &mut StakingAccount) {
         staking_account.earned = staking_account.earned + calculate_rewards(staking_pool_reward_index, staking_account);
         staking_account.reward_index = staking_pool_reward_index;

@@ -9,7 +9,7 @@ module moonbags::moonbags_test {
 
     use moonbags::moonbags::{Self, Configuration as BondingConfig};
     use moonbags::moonbags_stake::{Self, Configuration as StakeConfig};
-    use moonbags::staking_test::{get_creator_pool, get_taking_pool};
+    use moonbags::staking_test::{get_creator_pool, get_staking_pool};
 
     const ADMIN: address = @0x00;
     const USER_1: address = @0x10;
@@ -78,11 +78,11 @@ module moonbags::moonbags_test {
 
             let (_, creator_fee_withdraw, stake_fee_withdraw, platform_stake_fee_withdraw) = moonbags::get_config_value_for_testing(&bonding_config);
 
-            let staking_pool = get_taking_pool<TestToken>(&stake_config);
+            let staking_pool = get_staking_pool<TestToken>(&stake_config);
             let (_, _, sui_reward_value, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
             assert!(sui_reward_value == RECIPIENT_FEE * (stake_fee_withdraw as u64) / 10_000, EOutputEqualToExpected);
 
-            let staking_pool = get_taking_pool<SHRO>(&stake_config);
+            let staking_pool = get_staking_pool<SHRO>(&stake_config);
             let (_, _, sui_reward_value, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
             assert!(sui_reward_value == RECIPIENT_FEE * (platform_stake_fee_withdraw as u64) / 10_000, EOutputEqualToExpected);
 
