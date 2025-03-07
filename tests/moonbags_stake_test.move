@@ -376,7 +376,7 @@ module moonbags::staking_test {
         {
             moonbags_stake::init_for_testing(scenario.ctx());
         };
-        scenario.next_tx(ADMIN); // admin create staking pool
+        scenario.next_tx(USER_1);
         {
             let mut config = scenario.take_shared<Configuration>();
             let clock = clock::create_for_testing(scenario.ctx());
@@ -394,7 +394,7 @@ module moonbags::staking_test {
             test_scenario::return_shared(config);
             clock::destroy_for_testing(clock);
         };
-        scenario.next_tx(USER_1); // user_1 stake 10000 token in
+        scenario.next_tx(USER_1);
         {
             let mut config = scenario.take_shared<Configuration>();
             let clock = clock::create_for_testing(scenario.ctx());

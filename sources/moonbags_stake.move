@@ -338,9 +338,6 @@ module moonbags::moonbags_stake {
     public fun unstake<StakingToken>(configuration: &mut Configuration, unstake_amount: u64, clock: &Clock, ctx: &mut TxContext) {
         assert!(unstake_amount > 0, EInvalidAmount);
 
-        let current_ms = clock::timestamp_ms(clock);
-        assert!(current_ms >= configuration.deny_unstake_duration_ms, EUnstakeDeadlineNotAllow);
-
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
         assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EStakingPoolNotExist);
@@ -354,6 +351,9 @@ module moonbags::moonbags_stake {
         assert!(dynamic_object_field::exists_(&staking_pool.id, staker_address), EStakingAccountNotExist);
 
         let staking_account: &mut StakingAccount = dynamic_object_field::borrow_mut(&mut staking_pool.id, staker_address);
+
+        let current_ms = clock::timestamp_ms(clock);
+        assert!(current_ms >= staking_account.unstake_deadline, EUnstakeDeadlineNotAllow);
 
         // Update rewards before unstake
         update_rewards(staking_pool.reward_index, staking_account);
