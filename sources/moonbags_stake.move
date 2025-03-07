@@ -22,7 +22,7 @@ module moonbags::moonbags_stake {
     const ERewardToClaimNotValid: u64 = 9;
 
     // === Constants ===
-    const MULTIPLIER: u128 = 1_000_000_000_000_000_000; // 1e9
+    const MULTIPLIER: u128 = 1_000_000_000; // 1e9
 
     // === Structs ===
     public struct Configuration has key, store {
