@@ -1,5 +1,5 @@
 import { TransactionBlock } from "@mysten/sui.js/transactions";
-import { configAddress, packageAddress, processResult } from "./utils";
+import { configAddress, packageAddress, processResult, stakeConfigAddress } from "./utils";
 import readline from "readline";
 
 const createPool = async (tokenAddress: string, treasuryCapObjId: string) => {
@@ -11,6 +11,7 @@ const createPool = async (tokenAddress: string, treasuryCapObjId: string) => {
 
     // Fetch required objects
     const configuration = tx.object(configAddress);
+    const stakeConfig = tx.object(stakeConfigAddress);
     const treasuryCap = tx.object(treasuryCapObjId);
     const clock = tx.object("0x6"); // Clock object
 
@@ -20,6 +21,7 @@ const createPool = async (tokenAddress: string, treasuryCapObjId: string) => {
       typeArguments: [tokenAddress],
       arguments: [
         configuration,
+        stakeConfig,
         treasuryCap,
         tx.pure([10_000_000_000]), // max_supply
         clock,
