@@ -21,16 +21,16 @@ module moonbags::staking_test {
     public struct StakingToken has drop {}
 
     #[test_only]
-    public(package) fun get_taking_pool(config: &Configuration) : &StakingPool<StakingToken> {
-        let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
+    public(package) fun get_taking_pool<Token>(config: &Configuration) : &StakingPool<Token> {
+        let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<Token>>());
         let config_id = moonbags_stake::get_configuration_id_for_testing(config);
-        let staking_pool = dynamic_object_field::borrow<String, StakingPool<StakingToken>>(config_id, staking_pool_type_name);
+        let staking_pool = dynamic_object_field::borrow<String, StakingPool<Token>>(config_id, staking_pool_type_name);
         staking_pool
     }
 
     #[test_only]
-    public(package) fun get_creator_pool(config: &Configuration) : &CreatorPool<StakingToken> {
-        let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
+    public(package) fun get_creator_pool<Token>(config: &Configuration) : &CreatorPool<Token> {
+        let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<Token>>());
         let config_id = moonbags_stake::get_configuration_id_for_testing(config);
         let creator_pool = dynamic_object_field::borrow(config_id, creator_pool_type_name);
         creator_pool
@@ -105,7 +105,7 @@ module moonbags::staking_test {
             // Create staking pool
             moonbags_stake::initialize_staking_pool<StakingToken>(&mut config, &clock, scenario.ctx());
 
-            let staking_pool = get_taking_pool(&config);
+            let staking_pool = get_taking_pool<StakingToken>(&config);
 
             // Check staking pool values
             let (_, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
@@ -130,7 +130,7 @@ module moonbags::staking_test {
             moonbags_stake::stake(&mut config, stake_coin, &clock, scenario.ctx());
 
             // Check updated pool values
-            let staking_pool = get_taking_pool(&config);
+            let staking_pool = get_taking_pool<StakingToken>(&config);
             let (pool_id, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
             assert!(staking_token_value == 10_000, EOutputEqualToExpected);
@@ -163,7 +163,7 @@ module moonbags::staking_test {
             moonbags_stake::update_reward_index<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
 
             // Check updated pool values after reward
-            let staking_pool = get_taking_pool(&config);
+            let staking_pool = get_taking_pool<StakingToken>(&config);
             let (_, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
             // Reward index should be updated: (reward_amount * MULTIPLIER) / total_supply
@@ -188,7 +188,7 @@ module moonbags::staking_test {
             moonbags_stake::stake(&mut config, stake_coin, &clock, scenario.ctx());
 
             // Check updated pool values
-            let staking_pool = get_taking_pool(&config);
+            let staking_pool = get_taking_pool<StakingToken>(&config);
             let (pool_id, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
@@ -221,7 +221,7 @@ module moonbags::staking_test {
             moonbags_stake::update_reward_index<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
 
             // Check updated pool values after reward
-            let staking_pool = get_taking_pool(&config);
+            let staking_pool = get_taking_pool<StakingToken>(&config);
             let (_, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
             // Reward index should be updated: (reward_amount * MULTIPLIER) / total_supply
@@ -247,7 +247,7 @@ module moonbags::staking_test {
             assert!(claimed_amount == 1400, EOutputEqualToExpected);
 
             // Verify pool state after claim
-            let staking_pool = get_taking_pool(&config);
+            let staking_pool = get_taking_pool<StakingToken>(&config);
             let (pool_id, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
             
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
@@ -278,7 +278,7 @@ module moonbags::staking_test {
             moonbags_stake::update_reward_index<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
 
             // Check updated pool values after reward
-            let staking_pool = get_taking_pool(&config);
+            let staking_pool = get_taking_pool<StakingToken>(&config);
             let (_, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
@@ -298,7 +298,7 @@ module moonbags::staking_test {
             moonbags_stake::unstake<StakingToken>(&mut config, 5_000, &clock, scenario.ctx());
 
             // Check updated pool values after unstake
-            let staking_pool = get_taking_pool(&config);
+            let staking_pool = get_taking_pool<StakingToken>(&config);
             let (pool_id, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
             assert!(staking_token_value == 20_000, EOutputEqualToExpected);
@@ -331,7 +331,7 @@ module moonbags::staking_test {
             assert!(claimed_amount == 1200, EOutputEqualToExpected);
 
             // Verify pool state after claim
-            let staking_pool = get_taking_pool(&config);
+            let staking_pool = get_taking_pool<StakingToken>(&config);
             let (pool_id, staking_token_value, sui_token_value, total_supply, reward_index) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
             
             assert!(staking_token_value == 20_000, EOutputEqualToExpected);
@@ -358,7 +358,7 @@ module moonbags::staking_test {
             // Create staking pool
             moonbags_stake::initialize_creator_pool<StakingToken>(&mut config, USER_1, &clock, scenario.ctx());
 
-            let creator_pool = get_creator_pool(&config);
+            let creator_pool = get_creator_pool<StakingToken>(&config);
 
             // Check staking pool values
             let reward_sui = moonbags_stake::get_creator_pool_reward_value_for_testing(creator_pool);
@@ -377,7 +377,7 @@ module moonbags::staking_test {
 
             moonbags_stake::deposit_creator_pool<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
 
-            let creator_pool = get_creator_pool(&config);
+            let creator_pool = get_creator_pool<StakingToken>(&config);
 
             // Check staking pool values
             let reward_sui = moonbags_stake::get_creator_pool_reward_value_for_testing(creator_pool);
@@ -422,7 +422,7 @@ module moonbags::staking_test {
             // Create staking pool
             moonbags_stake::initialize_creator_pool<StakingToken>(&mut config, USER_1, &clock, scenario.ctx());
 
-            let creator_pool = get_creator_pool(&config);
+            let creator_pool = get_creator_pool<StakingToken>(&config);
 
             // Check staking pool values
             let reward_sui = moonbags_stake::get_creator_pool_reward_value_for_testing(creator_pool);
@@ -441,7 +441,7 @@ module moonbags::staking_test {
 
             moonbags_stake::deposit_creator_pool<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
 
-            let creator_pool = get_creator_pool(&config);
+            let creator_pool = get_creator_pool<StakingToken>(&config);
 
             // Check staking pool values
             let reward_sui = moonbags_stake::get_creator_pool_reward_value_for_testing(creator_pool);
