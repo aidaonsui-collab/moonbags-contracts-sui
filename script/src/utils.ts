@@ -1,8 +1,4 @@
-import {
-  getFullnodeUrl,
-  OwnedObjectRef,
-  SuiClient,
-} from "@mysten/sui.js/client";
+import { getFullnodeUrl, SuiClient } from "@mysten/sui.js/client";
 import { Ed25519Keypair } from "@mysten/sui.js/keypairs/ed25519";
 import { TransactionBlock } from "@mysten/sui.js/transactions";
 import dotenv from "dotenv";
@@ -12,6 +8,14 @@ export interface IObjectInfo {
   type: string | undefined;
   id: string | undefined;
 }
+
+export const packageAddress = process.env.PACKAGE_ADDRESS!;
+export const configAddress = process.env.CONFIG_ADDRESS!;
+export const stakeConfigAddress = process.env.STAKE_CONFIG_ADDRESS!;
+export const cetusPoolsId =
+  "0x50eb61dd5928cec5ea04711a2e9b72e5237e79e9fbcd2ce3d5469dc8708e0ee2";
+export const cetusGlobalConfigId =
+  "0x9774e359588ead122af1c7e7f64e14ade261cfeecdb5d0eb4a5b3b4c8ab8bd3e";
 
 export const keypair = Ed25519Keypair.fromSecretKey(
   Uint8Array.from(Buffer.from(process.env.KEY!, "base64")).slice(1)

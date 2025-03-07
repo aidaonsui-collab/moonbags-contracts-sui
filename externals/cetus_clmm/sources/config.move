@@ -206,8 +206,8 @@ module cetus_clmm::config {
     ///    - config: The global config
     ///    - _member: The member address
     ///    - roles: The roles
-    public fun set_roles(_: &AdminCap, _config: &mut GlobalConfig, _member: address, _roles: u128) {
-        abort 0
+    public fun set_roles(_: &AdminCap, _config: &mut GlobalConfig, _member: address, _roles: u128) { // update for testing
+  
     }
 
     /// Add a role for member.
