@@ -19,7 +19,8 @@ module moonbags::moonbags {
     use cetus_clmm::config::GlobalConfig;
     use cetus_clmm::position::Position;
 
-    const DEFAULT_THRESHOLD: u64 = 3000000000000; // 3000 SUI
+    const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
+    const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
     const VERSION: u64 = 1;
 
     // const ENotHavePermission: u64 = 1;
@@ -131,8 +132,8 @@ module moonbags::moonbags {
             version: VERSION,
             admin: ctx.sender(),
             platform_fee: 50,
-            graduated_fee: 300000000000,
-            initial_virtual_sui_reserves: 3000000000000,
+            graduated_fee: 750, // 7,5%
+            initial_virtual_sui_reserves: 3000000000, // 3 sui
             initial_virtual_token_reserves: 10000000000000000,
             remain_token_reserves: 2000000000000000,
             token_decimals: 6,
@@ -165,6 +166,9 @@ module moonbags::moonbags {
         assert_version(configuration.version);
         assert!(coin::total_supply<Token>(&treasury_cap) == 0, EExistTokenSupply);
 
+        let threshold = option::get_with_default(&threshold, DEFAULT_THRESHOLD);
+        assert!(threshold >= MINIMUM_THRESHOLD, EInvalidInput);
+
         let pool = Pool<Token>{
             id                     : object::new(ctx),
             real_sui_reserves      : coin::zero<SUI>(ctx),
@@ -172,7 +176,7 @@ module moonbags::moonbags {
             virtual_token_reserves : configuration.initial_virtual_token_reserves,
             virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
             remain_token_reserves  : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
-            threshold              : option::get_with_default(&threshold, DEFAULT_THRESHOLD),
+            threshold              : threshold,
             is_completed           : false,
         };
 
@@ -265,7 +269,7 @@ module moonbags::moonbags {
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
 
         if (actual_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= pool.threshold) {
-            transfer_pool<Token>(configuration.admin, pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
+            transfer_pool<Token>(configuration.admin, configuration.graduated_fee,  pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -312,7 +316,7 @@ module moonbags::moonbags {
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
 
         if (actual_token_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= pool.threshold) {
-            transfer_pool<Token>(configuration.admin, pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
+            transfer_pool<Token>(configuration.admin, configuration.graduated_fee ,pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -328,7 +332,7 @@ module moonbags::moonbags {
         emit<TradedEvent>(traded_event);
     }
 
-    fun buy_direct<Token>(admin: address, mut coin_sui: Coin<SUI>, pool: &mut Pool<Token>, amount_out: u64, platform_fee: u64, admin_address: address, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
+    fun buy_direct<Token>(admin: address, graduated_fee: u64, mut coin_sui: Coin<SUI>, pool: &mut Pool<Token>, amount_out: u64, platform_fee: u64, admin_address: address, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         assert!(!pool.is_completed, ECompletedPool);
         assert!(amount_out > 0, EInvalidInput);
 
@@ -349,7 +353,7 @@ module moonbags::moonbags {
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
 
         if (token_reserves_in_pool == actual_amount_out || coin::value<SUI>(&pool.real_sui_reserves) >= pool.threshold) {
-            transfer_pool<Token>(admin, pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
+            transfer_pool<Token>(admin, graduated_fee, pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -386,7 +390,7 @@ module moonbags::moonbags {
         pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
 
         if (token_reserves_in_pool == actual_amount_out || coin::value<SUI>(&pool.real_sui_reserves) >= pool.threshold) {
-            transfer_pool<Token>(configuration.admin, pool, cetus_pools, cetus_global_config , metadata_sui, metadata_token, clock, ctx);
+            transfer_pool<Token>(configuration.admin, configuration.graduated_fee, pool, cetus_pools, cetus_global_config , metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -427,7 +431,7 @@ module moonbags::moonbags {
         let (coin_token_out, coin_sui_out) = swap<Token>(pool, coin::zero<Token>(ctx), coin_sui, actual_amount_out, amount_sui_in - actual_amount_in - fee, ctx);
 
         if (actual_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= pool.threshold) {
-            transfer_pool<Token>(configuration.admin, pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
+            transfer_pool<Token>(configuration.admin, configuration.graduated_fee, pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         let traded_event = TradedEvent{
             is_buy                 : true,
@@ -478,6 +482,9 @@ module moonbags::moonbags {
         assert_version(configuration.version);
         assert!(coin::total_supply<Token>(&treasury_cap) == 0, EExistTokenSupply);
 
+        let threshold = option::get_with_default(&threshold, DEFAULT_THRESHOLD);
+        assert!(threshold >= MINIMUM_THRESHOLD, EInvalidInput);
+
         let mut pool = Pool<Token>{
             id                     : object::new(ctx),
             real_sui_reserves      : coin::zero<SUI>(ctx),
@@ -485,7 +492,7 @@ module moonbags::moonbags {
             virtual_token_reserves : configuration.initial_virtual_token_reserves,
             virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
             remain_token_reserves  : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
-            threshold              : option::get_with_default(&threshold, DEFAULT_THRESHOLD),
+            threshold              : threshold,
             is_completed           : false,
         };
 
@@ -493,7 +500,7 @@ module moonbags::moonbags {
 
         let token_address = type_name::get<Token>();
         if (coin::value<SUI>(&coin_sui) > 0) {
-            buy_direct<Token>(configuration.admin, coin_sui, &mut pool, amount_out, configuration.platform_fee, configuration.admin, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
+            buy_direct<Token>(configuration.admin, configuration.graduated_fee, coin_sui, &mut pool, amount_out, configuration.platform_fee, configuration.admin, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         } else {
             coin::destroy_zero<SUI>(coin_sui);
         };
@@ -664,7 +671,7 @@ module moonbags::moonbags {
         emit<OwnershipTransferredEvent>(ownership_transferred_event);
     }
 
-    fun transfer_pool<Token>(admin: address, pool: &mut Pool<Token>, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
+    fun transfer_pool<Token>(admin: address, graduated_fee: u64, pool: &mut Pool<Token>, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         pool.is_completed = true;
 
         let real_token_reserves = &pool.real_token_reserves;
@@ -674,7 +681,10 @@ module moonbags::moonbags {
         let mut coin_token = coin::split<Token>(&mut pool.real_token_reserves, coin::value<Token>(real_token_reserves), ctx);
         coin::join<Token>(&mut coin_token, coin::split<Token>(&mut pool.remain_token_reserves, coin::value<Token>(remain_token_reserves), ctx));
 
-        let coin_sui = coin::split<SUI>(&mut pool.real_sui_reserves, coin::value<SUI>(real_sui_reserves), ctx);
+        let mut coin_sui = coin::split<SUI>(&mut pool.real_sui_reserves, coin::value<SUI>(real_sui_reserves), ctx);
+
+        let sui_graduated_fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(coin::value<SUI>(&coin_sui)), utils::from_u64(graduated_fee)), utils::from_u64(10000)));
+        transfer::public_transfer<Coin<SUI>>(coin::split<SUI>(&mut coin_sui, sui_graduated_fee, ctx), admin);
 
         let pool_completed_event = PoolCompletedEvent{
             token_address : type_name::into_string(type_name::get<Token>()),
@@ -715,6 +725,13 @@ module moonbags::moonbags {
         threshold_config.threshold = new_threshold;
     }
 
+    /*
+     * explanation of some magic numbers:
+     * cetus tick bound is (-443636, 443636)
+     * standard tick spacing is 60
+     * tick_upper_idx = 443636 - 443636 % 60 = 443580
+     * sqrt(340282366920938463463374607431768211456) = sqrt(2**128) = 2**64 (Q64)
+     */
     public entry fun init_cetus_pool<Token>(admin: address, coin_sui: Coin<SUI>, coin_token: Coin<Token>, pools: &mut Pools, config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         let token_amount = coin::value<Token>(&coin_token) as u256;
         let sui_amount = coin::value<SUI>(&coin_sui) as u256;
