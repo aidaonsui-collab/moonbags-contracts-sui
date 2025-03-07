@@ -20,8 +20,10 @@ module cetus_clmm::acl {
     }
 
     /// @notice Create a new ACL (access control list).
-    public fun new(_ctx: &mut TxContext): ACL {
-        abort 0
+    public fun new(_ctx: &mut TxContext): ACL { // update for testing
+        ACL {
+            permissions: move_stl::linked_table::new(_ctx)
+        }
     }
 
     /// @notice Check if a member has a role in the ACL.
