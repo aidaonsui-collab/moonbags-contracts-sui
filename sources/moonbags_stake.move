@@ -20,6 +20,7 @@ module moonbags::moonbags_stake {
     const EInvalidAmount: u64 = 7;
     const EPoolAlreadyExist: u64 = 8;
     const ERewardToClaimNotValid: u64 = 9;
+    const EUnstakeDeadlineNotAllow: u64 = 10;
 
     // === Constants ===
     const MULTIPLIER: u128 = 1_000_000_000; // 1e9
@@ -29,6 +30,7 @@ module moonbags::moonbags_stake {
         id: UID,
         version: u64,
         admin: address,
+        deny_unstake_duration_ms: u64,
     }
 
     #[allow(lint(coin_field))]
@@ -52,6 +54,7 @@ module moonbags::moonbags_stake {
         balance: u64,
         reward_index: u128,
         earned: u64,
+        unstake_deadline: u64,
     }
 
     // === Events ===
@@ -123,13 +126,14 @@ module moonbags::moonbags_stake {
             id: object::new(ctx),
             version: 1,
             admin: ctx.sender(),
+            deny_unstake_duration_ms: 60 * 60 * 1000, // 1 hour
         };
         transfer::public_share_object<Configuration>(configuration);
     }
 
     // === Public Functions ===
     
-    /**
+    /*
      * Initializes a new staking pool for a specific token type.
      * 
      * @typeArgument StakingToken - The token type that will be staked in this pool.
@@ -161,7 +165,7 @@ module moonbags::moonbags_stake {
         dynamic_object_field::add(&mut configuration.id, staking_pool_type_name, staking_pool);
     }
 
-    /**
+    /*
      * Initializes a creator pool for a specific token type.
      * 
      * @typeArgument StakingToken - The token type associated with this creator pool.
@@ -193,7 +197,7 @@ module moonbags::moonbags_stake {
         dynamic_object_field::add(&mut configuration.id, creator_pool_type_name, creator_pool);
     }
 
-    /**
+    /*
      * Updates the reward index of a staking pool by adding new rewards.
      * 
      * @typeArgument StakingToken - The token type associated with the staking pool.
@@ -231,7 +235,7 @@ module moonbags::moonbags_stake {
         emit<UpdateRewardIndexEvent>(update_reward_index_event);
     }
 
-    /**
+    /*
      * Deposits SUI coin into a creator pool.
      * 
      * @typeArgument StakingToken - The token type associated with the creator pool.
@@ -265,7 +269,7 @@ module moonbags::moonbags_stake {
         emit<DepositPoolCreatorEvent>(update_reward_index_event);
     }
 
-    /**
+    /*
      * Stakes tokens in a staking pool.
      * 
      * @typeArgument StakingToken - The token type to stake.
@@ -292,6 +296,7 @@ module moonbags::moonbags_stake {
                 balance         : 0,
                 reward_index    : 0,
                 earned          : 0,
+                unstake_deadline: 0,
             };
             dynamic_object_field::add(&mut staking_pool.id, staker_address, new_staking_account);
         };
@@ -304,6 +309,8 @@ module moonbags::moonbags_stake {
         let amount_token_staking_in = coin::value<StakingToken>(&staking_coin);
         assert!(amount_token_staking_in > 0, EInvalidAmount);
 
+        let current_ms = clock::timestamp_ms(clock);
+        staking_account.unstake_deadline = current_ms + configuration.deny_unstake_duration_ms;
         staking_account.balance = staking_account.balance + amount_token_staking_in;
         staking_pool.total_supply = staking_pool.total_supply + amount_token_staking_in;
 
@@ -314,12 +321,12 @@ module moonbags::moonbags_stake {
             staking_pool        : object::id(staking_pool),
             staker              : staker_address.to_ascii_string(),
             amount              : amount_token_staking_in,
-            timestamp           : clock::timestamp_ms(clock),
+            timestamp           : current_ms,
         };
         emit<StakeEvent>(stake_event);
     }
 
-    /**
+    /*
      * Unstakes tokens from a staking pool.
      * 
      * @typeArgument StakingToken - The token type to unstake.
@@ -330,6 +337,9 @@ module moonbags::moonbags_stake {
      */
     public fun unstake<StakingToken>(configuration: &mut Configuration, unstake_amount: u64, clock: &Clock, ctx: &mut TxContext) {
         assert!(unstake_amount > 0, EInvalidAmount);
+
+        let current_ms = clock::timestamp_ms(clock);
+        assert!(current_ms >= configuration.deny_unstake_duration_ms, EUnstakeDeadlineNotAllow);
 
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
@@ -361,12 +371,12 @@ module moonbags::moonbags_stake {
             staking_pool        : object::id(staking_pool),
             unstaker            : staker_address.to_ascii_string(),
             amount              : unstake_amount,
-            timestamp           : clock::timestamp_ms(clock),
+            timestamp           : current_ms,
         };
         emit<UnstakeEvent>(unstake_event);
     }
 
-    /**
+    /*
      * Claims rewards from a staking pool.
      * 
      * @typeArgument StakingToken - The token type associated with the staking pool.
@@ -413,7 +423,7 @@ module moonbags::moonbags_stake {
         reward_amount
     }
 
-    /**
+    /*
      * Claims rewards from a creator pool.
      * 
      * @typeArgument StakingToken - The token type associated with the creator pool.
@@ -454,7 +464,7 @@ module moonbags::moonbags_stake {
 
     // === View Functions ===
 
-    /**
+    /*
      * Calculates the rewards earned by the sender for staking tokens.
      * 
      * @typeArgument StakingToken - The token type associated with the staking pool.
@@ -482,7 +492,7 @@ module moonbags::moonbags_stake {
 
     // === Private Functions ===
 
-    /**
+    /*
      * Calculates the pending rewards for a staking account.
      * 
      * @param staking_pool_reward_index - Current reward index of the staking pool.
@@ -495,7 +505,7 @@ module moonbags::moonbags_stake {
     }
 
 
-    /**
+    /*
      * Updates the rewards earned by a staking account based on the current reward index.
      * 
      * @param staking_pool_reward_index - Current reward index of the staking pool.

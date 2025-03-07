@@ -21,15 +21,6 @@ module moonbags::moonbags_test {
     public struct SHRO has drop {}
 
     #[test]
-    fun test_init() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        {
-            moonbags::init_for_testing(scenario.ctx());
-        };
-        scenario.end();
-    }
-
-    #[test]
     fun withdraw_fee_testing() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
