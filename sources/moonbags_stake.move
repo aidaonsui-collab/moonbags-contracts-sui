@@ -18,11 +18,10 @@ module moonbags::moonbags_stake {
     const ENoStakers: u64 = 5;
     const EInvalidCreator: u64 = 6;
     const EInvalidAmount: u64 = 7;
-    const EPoolAlreadyExist: u64 = 8;
-    const ERewardToClaimNotValid: u64 = 9;
-    const EUnstakeDeadlineNotAllow: u64 = 10;
-    const ENotUpgrade: u64 = 11;
-    const EWrongVersion: u64 = 12;
+    const ERewardToClaimNotValid: u64 = 8;
+    const EUnstakeDeadlineNotAllow: u64 = 9;
+    const ENotUpgrade: u64 = 10;
+    const EWrongVersion: u64 = 11;
 
     // === Constants ===
     const MULTIPLIER: u128 = 1_000_000_000; // 1e9
@@ -158,7 +157,9 @@ module moonbags::moonbags_stake {
         assert_version(configuration.version);
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
-        assert!(!dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EPoolAlreadyExist);
+        if (dynamic_object_field::exists_(&configuration.id, staking_pool_type_name)) {
+            return
+        };
 
         let staking_pool = StakingPool<StakingToken> {
             id                  : object::new(ctx),
@@ -188,11 +189,13 @@ module moonbags::moonbags_stake {
      * @param clock - Clock for timestamp recording.
      * @param ctx - Mutable transaction context.
      */
-    public entry fun initialize_creator_pool<StakingToken>(configuration: &mut Configuration, creator: address, clock: &Clock, ctx: &mut TxContext) {
+    public(package) entry fun initialize_creator_pool<StakingToken>(configuration: &mut Configuration, creator: address, clock: &Clock, ctx: &mut TxContext) {
         assert_version(configuration.version);
         let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
-        assert!(!dynamic_object_field::exists_(&configuration.id, creator_pool_type_name), EPoolAlreadyExist);
+        if (dynamic_object_field::exists_(&configuration.id, creator_pool_type_name)) {
+            return
+        };
 
         let creator_pool = CreatorPool<StakingToken> {
             id                  : object::new(ctx),
