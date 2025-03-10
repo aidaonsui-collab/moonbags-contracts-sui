@@ -21,11 +21,18 @@ module moonbags::moonbags_stake {
     const EPoolAlreadyExist: u64 = 8;
     const ERewardToClaimNotValid: u64 = 9;
     const EUnstakeDeadlineNotAllow: u64 = 10;
+    const ENotUpgrade: u64 = 11;
+    const EWrongVersion: u64 = 12;
 
     // === Constants ===
     const MULTIPLIER: u128 = 1_000_000_000; // 1e9
+    const VERSION: u64 = 1;
 
     // === Structs ===
+    public struct AdminCap has key {
+        id: UID,
+    }
+
     public struct Configuration has key, store {
         id: UID,
         version: u64,
@@ -122,6 +129,10 @@ module moonbags::moonbags_stake {
     }
 
     fun init(ctx: &mut TxContext) {
+        let admin = AdminCap {
+            id: object::new(ctx),
+        };
+
         let configuration = Configuration {
             id: object::new(ctx),
             version: 1,
@@ -129,10 +140,12 @@ module moonbags::moonbags_stake {
             deny_unstake_duration_ms: 60 * 60 * 1000, // 1 hour
         };
         transfer::public_share_object<Configuration>(configuration);
+
+        transfer::transfer(admin, ctx.sender());
     }
 
     // === Public Functions ===
-    
+
     /*
      * Initializes a new staking pool for a specific token type.
      * 
@@ -141,7 +154,8 @@ module moonbags::moonbags_stake {
      * @param clock - clock for timestamp recording.
      * @param ctx - Mutable transaction context.
      */
-    public fun initialize_staking_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun initialize_staking_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) {
+        assert_version(configuration.version);
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
         assert!(!dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EPoolAlreadyExist);
@@ -174,7 +188,8 @@ module moonbags::moonbags_stake {
      * @param clock - Clock for timestamp recording.
      * @param ctx - Mutable transaction context.
      */
-    public fun initialize_creator_pool<StakingToken>(configuration: &mut Configuration, creator: address, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun initialize_creator_pool<StakingToken>(configuration: &mut Configuration, creator: address, clock: &Clock, ctx: &mut TxContext) {
+        assert_version(configuration.version);
         let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
         assert!(!dynamic_object_field::exists_(&configuration.id, creator_pool_type_name), EPoolAlreadyExist);
@@ -206,7 +221,8 @@ module moonbags::moonbags_stake {
      * @param clock - Clock for timestamp recording.
      * @param ctx - Mutable transaction context for sender information.
      */
-    public fun update_reward_index<StakingToken>(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun update_reward_index<StakingToken>(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
+        assert_version(configuration.version);
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
         assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EStakingPoolNotExist);
@@ -244,7 +260,8 @@ module moonbags::moonbags_stake {
      * @param clock - Clock for timestamp recording.
      * @param ctx - Mutable transaction context for sender information.
      */
-    public fun deposit_creator_pool<StakingToken>(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun deposit_creator_pool<StakingToken>(configuration: &mut Configuration, reward_sui_coin: Coin<SUI>, clock: &Clock, ctx: &mut TxContext) {
+        assert_version(configuration.version);
         let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
         assert!(dynamic_object_field::exists_(&configuration.id, creator_pool_type_name), EStakingCreatorNotExist);
@@ -278,7 +295,8 @@ module moonbags::moonbags_stake {
      * @param clock - Clock for timestamp recording.
      * @param ctx - Mutable transaction context.
      */
-    public fun stake<StakingToken>(configuration: &mut Configuration, staking_coin: Coin<StakingToken>, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun stake<StakingToken>(configuration: &mut Configuration, staking_coin: Coin<StakingToken>, clock: &Clock, ctx: &mut TxContext) {
+        assert_version(configuration.version);
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
         
         assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EStakingPoolNotExist);
@@ -335,7 +353,8 @@ module moonbags::moonbags_stake {
      * @param clock - Clock for timestamp recording.
      * @param ctx - Mutable transaction context for sender information.
      */
-    public fun unstake<StakingToken>(configuration: &mut Configuration, unstake_amount: u64, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun unstake<StakingToken>(configuration: &mut Configuration, unstake_amount: u64, clock: &Clock, ctx: &mut TxContext) {
+        assert_version(configuration.version);
         assert!(unstake_amount > 0, EInvalidAmount);
 
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
@@ -385,7 +404,8 @@ module moonbags::moonbags_stake {
      * @param ctx - Mutable transaction context for sender information.
      * @return The amount of SUI claimed as rewards.
      */
-    public fun claim_staking_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) : u64 {
+    public entry fun claim_staking_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) : u64 {
+        assert_version(configuration.version);
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
         assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EStakingPoolNotExist);
@@ -432,7 +452,8 @@ module moonbags::moonbags_stake {
      * @param ctx - Mutable transaction context for sender information.
      * @return The amount of SUI claimed from the creator pool.
      */
-    public fun claim_creator_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) : u64 {
+    public entry fun claim_creator_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) : u64 {
+        assert_version(configuration.version);
         let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
         assert!(dynamic_object_field::exists_(&configuration.id, creator_pool_type_name), EStakingCreatorNotExist);
@@ -472,7 +493,8 @@ module moonbags::moonbags_stake {
      * @param ctx - Mutable transaction context for sender information.
      * @return The total amount of rewards earned.
      */
-    public fun calculate_rewards_earned<StakingToken>(configuration: &Configuration, ctx: &mut TxContext): u64 {
+    public entry fun calculate_rewards_earned<StakingToken>(configuration: &Configuration, ctx: &mut TxContext): u64 {
+        assert_version(configuration.version);
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
 
         assert!(dynamic_object_field::exists_(&configuration.id, staking_pool_type_name), EStakingPoolNotExist);
@@ -490,6 +512,20 @@ module moonbags::moonbags_stake {
         staking_account.earned + calculate_rewards(staking_pool.reward_index, staking_account)
     }
 
+    public entry fun update_config(_: &AdminCap, configuration: &mut Configuration, new_deny_unstake_duration_ms: u64) {
+        configuration.deny_unstake_duration_ms = new_deny_unstake_duration_ms;
+    }
+
+    public entry fun migrate_version(_: &AdminCap, configuration: &mut Configuration) {
+        assert!(configuration.version < VERSION, ENotUpgrade);
+        configuration.version = VERSION;
+    }
+
+    public entry fun transfer_admin(admin_cap: AdminCap, configuration: &mut Configuration, new_admin: address, clock: &Clock, ctx: &mut TxContext) {
+        configuration.admin = new_admin;
+        transfer::transfer(admin_cap, new_admin);
+    }
+
     // === Private Functions ===
 
     /*
@@ -504,7 +540,6 @@ module moonbags::moonbags_stake {
         ((shares * (staking_pool_reward_index - staking_account.reward_index)) / MULTIPLIER) as u64
     }
 
-
     /*
      * Updates the rewards earned by a staking account based on the current reward index.
      * 
@@ -514,6 +549,10 @@ module moonbags::moonbags_stake {
     fun update_rewards(staking_pool_reward_index: u128, staking_account: &mut StakingAccount) {
         staking_account.earned = staking_account.earned + calculate_rewards(staking_pool_reward_index, staking_account);
         staking_account.reward_index = staking_pool_reward_index;
+    }
+
+    fun assert_version(version: u64) {
+        assert!(version == VERSION, EWrongVersion);
     }
 
     // === Test Functions ===

@@ -706,8 +706,10 @@ module moonbags::moonbags {
         transfer::public_transfer<Coin<Token>>(coin::split<Token>(&mut pool.real_token_reserves, coin::value<Token>(real_token_reserves), ctx), ctx.sender());
     }
 
-    public entry fun transfer_admin(_: &AdminCap, configuration: &mut Configuration, new_admin: address, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun transfer_admin(admin_cap: AdminCap, configuration: &mut Configuration, new_admin: address, clock: &Clock, ctx: &mut TxContext) {
         configuration.admin = new_admin;
+        transfer::transfer(admin_cap, new_admin);
+
         let ownership_transferred_event = OwnershipTransferredEvent{
             old_admin : ctx.sender(),
             new_admin : new_admin,
