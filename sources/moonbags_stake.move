@@ -521,7 +521,7 @@ module moonbags::moonbags_stake {
         configuration.version = VERSION;
     }
 
-    public entry fun transfer_admin(admin_cap: AdminCap, configuration: &mut Configuration, new_admin: address, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun transfer_admin(admin_cap: AdminCap, configuration: &mut Configuration, new_admin: address) {
         configuration.admin = new_admin;
         transfer::transfer(admin_cap, new_admin);
     }
