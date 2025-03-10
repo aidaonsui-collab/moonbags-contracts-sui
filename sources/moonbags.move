@@ -139,6 +139,8 @@ module moonbags::moonbags {
         token_amount: u64,
         virtual_sui_reserves: u64,
         virtual_token_reserves: u64,
+        real_sui_reserves: u64,
+        real_token_reserves: u64,
         pool_id: ID,
         ts: u64,
     }
@@ -313,6 +315,8 @@ module moonbags::moonbags {
             token_amount           : actual_amount_out,
             virtual_sui_reserves   : pool.virtual_sui_reserves,
             virtual_token_reserves : pool.virtual_token_reserves,
+            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
+            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id(pool),
             ts                     : clock::timestamp_ms(clock),
         };
@@ -361,6 +365,8 @@ module moonbags::moonbags {
             token_amount           : actual_token_amount_out,
             virtual_sui_reserves   : pool.virtual_sui_reserves,
             virtual_token_reserves : pool.virtual_token_reserves,
+            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
+            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id(pool),
             ts                     : clock::timestamp_ms(clock),
         };
@@ -399,6 +405,8 @@ module moonbags::moonbags {
             token_amount           : actual_amount_out,
             virtual_sui_reserves   : pool.virtual_sui_reserves,
             virtual_token_reserves : pool.virtual_token_reserves,
+            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
+            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id(pool),
             ts                     : clock::timestamp_ms(clock),
         };
@@ -437,6 +445,8 @@ module moonbags::moonbags {
             token_amount           : actual_amount_out,
             virtual_sui_reserves   : pool.virtual_sui_reserves,
             virtual_token_reserves : pool.virtual_token_reserves,
+            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
+            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id<Pool<Token>>(pool),
             ts                     : clock::timestamp_ms(clock),
         };
@@ -479,6 +489,8 @@ module moonbags::moonbags {
             token_amount           : actual_amount_out,
             virtual_sui_reserves   : pool.virtual_sui_reserves,
             virtual_token_reserves : pool.virtual_token_reserves,
+            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
+            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id(pool),
             ts                     : clock::timestamp_ms(clock),
         };
@@ -656,6 +668,8 @@ module moonbags::moonbags {
             token_amount           : amount_in,
             virtual_sui_reserves   : pool.virtual_sui_reserves,
             virtual_token_reserves : pool.virtual_token_reserves,
+            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
+            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id<Pool<Token>>(pool),
             ts                     : clock::timestamp_ms(clock),
         };
@@ -687,6 +701,8 @@ module moonbags::moonbags {
             token_amount           : amount_in,
             virtual_sui_reserves   : pool.virtual_sui_reserves,
             virtual_token_reserves : pool.virtual_token_reserves,
+            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
+            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id<Pool<Token>>(pool),
             ts                     : clock::timestamp_ms(clock),
         };

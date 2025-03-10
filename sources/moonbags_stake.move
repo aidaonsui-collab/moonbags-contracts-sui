@@ -504,7 +504,6 @@ module moonbags::moonbags_stake {
         ((shares * (staking_pool_reward_index - staking_account.reward_index)) / MULTIPLIER) as u64
     }
 
-
     /*
      * Updates the rewards earned by a staking account based on the current reward index.
      * 
