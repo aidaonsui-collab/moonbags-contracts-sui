@@ -593,4 +593,9 @@ module moonbags::moonbags_stake {
     public(package) fun get_creator_pool_reward_value_for_testing<StakingToken>(pool: &CreatorPool<StakingToken>): u64 {
         coin::value(&pool.sui_token)
     }
+
+    #[test_only]
+    public(package) fun get_unstake_deadline_for_testing(account: &StakingAccount): u64 {
+        account.unstake_deadline
+    }
 }
