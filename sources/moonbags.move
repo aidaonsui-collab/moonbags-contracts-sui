@@ -24,6 +24,7 @@ module moonbags::moonbags {
     const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
     const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
     const VERSION: u64 = 1;
+    const FEE_DENOMINATOR: u64 = 10000;
 
     // const ENotHavePermission: u64 = 1;
     const EInvalidInput: u64 = 2;
@@ -295,7 +296,7 @@ module moonbags::moonbags {
         let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
         let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
-        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(configuration.platform_fee)), utils::from_u64(10000)));
+        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
 
         coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui, fee, ctx));
 
@@ -334,7 +335,7 @@ module moonbags::moonbags {
         let token_address = type_name::get<Token>();
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
 
-        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_in), utils::from_u64(configuration.platform_fee)), utils::from_u64(10000)));
+        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_in), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
 
         coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui, fee, ctx));
 
@@ -386,7 +387,7 @@ module moonbags::moonbags {
         let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
         let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
-        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(platform_fee)), utils::from_u64(10000)));
+        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
         assert!(amount_sui_in >= amount_in_swap + fee, EInsufficientInput);
 
         coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui, fee, ctx));
@@ -429,7 +430,7 @@ module moonbags::moonbags {
 
         let amount_sui_in = coin::value<SUI>(&coin_sui);
         let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
-        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(configuration.platform_fee)), utils::from_u64(10000)));
+        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
         assert!(amount_sui_in >= amount_in_swap + fee, EInsufficientInput);
 
         coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui, fee, ctx));
@@ -465,7 +466,7 @@ module moonbags::moonbags {
         let token_address = type_name::get<Token>();
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
 
-        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_in), utils::from_u64(configuration.platform_fee)), utils::from_u64(10000)));
+        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_in), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
 
         coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui, fee, ctx));
 
@@ -629,11 +630,11 @@ module moonbags::moonbags {
         let token_address = type_name::get<Token>();
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
         if (amount_sui_in > 0 && amount_token_in == 0) {
-            (0, curves::calculate_token_amount_received(pool.virtual_sui_reserves, pool.virtual_token_reserves, amount_sui_in - utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_in), utils::from_u64(configuration.platform_fee)), utils::from_u64(10000)))))
+            (0, curves::calculate_token_amount_received(pool.virtual_sui_reserves, pool.virtual_token_reserves, amount_sui_in - utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_in), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)))))
         } else {
             let (amount_sui_out, amount_token_out) = if (amount_sui_in == 0 && amount_token_in > 0) {
                 let amount_sui_out_with_fee = curves::calculate_remove_liquidity_return(pool.virtual_token_reserves, pool.virtual_sui_reserves, amount_token_in);
-                (amount_sui_out_with_fee - utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_out_with_fee), utils::from_u64(configuration.platform_fee)), utils::from_u64(10000))), 0)
+                (amount_sui_out_with_fee - utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_out_with_fee), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR))), 0)
             } else {
                 (0, 0)
             };
@@ -656,7 +657,7 @@ module moonbags::moonbags {
         assert!(amount_in > 0, EInvalidInput);
 
         let amount_sui_out = curves::calculate_remove_liquidity_return(pool.virtual_token_reserves, pool.virtual_sui_reserves, amount_in);
-        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_out), utils::from_u64(configuration.platform_fee)), utils::from_u64(10000)));
+        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_out), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
         assert!(amount_sui_out - fee >= amount_out_min, 2);
         let (coin_token_out, mut coin_sui_out) = swap<Token>(pool, coin_token, coin::zero<SUI>(ctx), 0, amount_sui_out, ctx);
         pool.virtual_sui_reserves = pool.virtual_sui_reserves - coin::value<SUI>(&coin_sui_out);
@@ -692,7 +693,7 @@ module moonbags::moonbags {
         assert!(amount_in > 0, EInvalidInput);
 
         let amount_sui_out = curves::calculate_remove_liquidity_return(pool.virtual_token_reserves, pool.virtual_sui_reserves, amount_in);
-        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_out), utils::from_u64(configuration.platform_fee)), utils::from_u64(10000)));
+        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_out), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
         assert!(amount_sui_out - fee >= amount_out_min, 2);
         let (coin_token_out, mut coin_sui_out) = swap<Token>(pool, coin_token, coin::zero<SUI>(ctx), 0, amount_sui_out, ctx);
         pool.virtual_sui_reserves = pool.virtual_sui_reserves - coin::value<SUI>(&coin_sui_out);
@@ -752,7 +753,7 @@ module moonbags::moonbags {
 
         let mut coin_sui = coin::split<SUI>(&mut pool.real_sui_reserves, coin::value<SUI>(real_sui_reserves), ctx);
 
-        let sui_graduated_fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(coin::value<SUI>(&coin_sui)), utils::from_u64(graduated_fee)), utils::from_u64(10000)));
+        let sui_graduated_fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(coin::value<SUI>(&coin_sui)), utils::from_u64(graduated_fee)), utils::from_u64(FEE_DENOMINATOR)));
         transfer::public_transfer<Coin<SUI>>(coin::split<SUI>(&mut coin_sui, sui_graduated_fee, ctx), admin);
 
         let pool_completed_event = PoolCompletedEvent{
@@ -899,15 +900,18 @@ module moonbags::moonbags {
         };
 
         let fee_amount = coin::value(&pool.fee_recipient);
-        assert!(fee_amount > 0, EInsufficientInput);
+        // Return early to prevent excessive function calls, threshold FEE_DENOMINATOR prevent division to zero
+        if (fee_amount <= FEE_DENOMINATOR) {
+            return
+        };
 
         let platform_token_type_name = type_name::into_string(type_name::get<PlatformToken>());
         assert!(platform_token_type_name == bonding_curve_config.token_platform_type_name, EInsufficientInput);
 
-        let platform_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.platform_fee_withdraw as u64)), utils::from_u64(10000)));    
-        let creator_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.creator_fee_withdraw as u64)), utils::from_u64(10000)));  
-        let stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.stake_fee_withdraw as u64)), utils::from_u64(10000)));         
-        let platform_stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.platform_stake_fee_withdraw as u64)), utils::from_u64(10000)));
+        let platform_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.platform_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));    
+        let creator_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.creator_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));  
+        let stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.stake_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));         
+        let platform_stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.platform_stake_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
 
         assert!(platform_share + creator_share + stake_share + platform_stake_share <= fee_amount, EInvalidWithdrawAmount);
 
