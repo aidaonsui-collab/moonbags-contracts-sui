@@ -156,7 +156,8 @@ module moonbags::moonbags_stake {
     public entry fun initialize_staking_pool<StakingToken>(configuration: &mut Configuration, clock: &Clock, ctx: &mut TxContext) {
         assert_version(configuration.version);
         let staking_pool_type_name = type_name::into_string(type_name::get<StakingPool<StakingToken>>());
-
+        
+        // Return early if staking pool already exists to prevent revert when called by create bonding pool function
         if (dynamic_object_field::exists_(&configuration.id, staking_pool_type_name)) {
             return
         };
@@ -193,6 +194,7 @@ module moonbags::moonbags_stake {
         assert_version(configuration.version);
         let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
 
+        // Return early if creator pool already exists to prevent revert when called by create bonding pool function
         if (dynamic_object_field::exists_(&configuration.id, creator_pool_type_name)) {
             return
         };
