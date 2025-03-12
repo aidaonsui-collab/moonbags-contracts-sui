@@ -403,18 +403,13 @@ module moonbags::moonbags_stake {
         let staking_account_id = object::id(staking_account);
 
         // Try to clean up the account if it's empty
-        let is_account_deleted = (staking_account.balance == 0 && staking_account.earned == 0);
-        if (is_account_deleted) {
-            let StakingAccount { id, staker: _, balance: _, reward_index: _, earned: _, unstake_deadline: _ } = 
-                dynamic_object_field::remove(&mut staking_pool.id, staker_address);
-            object::delete(id);
-        };
+        let is_staking_account_deleted = try_cleanup_empty_account(staking_pool, staking_account.balance, staking_account.earned, staker_address);
 
         let unstake_event = UnstakeEvent {
             token_address               : type_name::into_string(type_name::get<StakingToken>()),
             staking_pool                : staking_pool_id,
             staking_account             : staking_account_id,
-            is_staking_account_deleted  : is_account_deleted,
+            is_staking_account_deleted  : is_staking_account_deleted,
             unstaker                    : staker_address.to_ascii_string(),
             amount                      : unstake_amount,
             timestamp                   : current_ms,
@@ -462,18 +457,13 @@ module moonbags::moonbags_stake {
         let staking_account_id = object::id(staking_account);
 
         // Try to clean up the account if it's empty
-        let is_account_deleted = (staking_account.balance == 0 && staking_account.earned == 0);
-        if (is_account_deleted) {
-            let StakingAccount { id, staker: _, balance: _, reward_index: _, earned: _, unstake_deadline: _ } = 
-                dynamic_object_field::remove(&mut staking_pool.id, staker_address);
-            object::delete(id);
-        };
+        let is_staking_account_deleted = try_cleanup_empty_account(staking_pool, staking_account.balance, staking_account.earned, staker_address);
 
         let claim_staking_pool_event = ClaimStakingPoolEvent {
             token_address               : type_name::into_string(type_name::get<StakingToken>()),
             staking_pool                : staking_pool_id,
             staking_account             : staking_account_id,
-            is_staking_account_deleted  : is_account_deleted,
+            is_staking_account_deleted  : is_staking_account_deleted,
             claimer                     : staker_address.to_ascii_string(),
             reward                      : reward_amount,
             timestamp                   : clock::timestamp_ms(clock),
@@ -589,6 +579,26 @@ module moonbags::moonbags_stake {
     fun update_rewards(staking_pool_reward_index: u128, staking_account: &mut StakingAccount) {
         staking_account.earned = staking_account.earned + calculate_rewards(staking_pool_reward_index, staking_account);
         staking_account.reward_index = staking_pool_reward_index;
+    }
+
+    /*
+     * Attempts to clean up a staking account if it has zero balance and zero earned rewards.
+     * 
+     * @param staking_pool - Mutable reference to the staking pool containing the account.
+     * @param staker_address - The address of the staker whose account should be checked.
+     * @return A boolean indicating whether the account was deleted (true) or kept (false).
+     */
+    fun try_cleanup_empty_account<StakingToken>(staking_pool: &mut StakingPool<StakingToken>, staking_balance: u64, staking_earned: u64, staker: address): bool {
+        let is_account_empty = (staking_balance == 0 && staking_earned == 0);
+        
+        if (is_account_empty) {
+            let StakingAccount { id, staker: _, balance: _, reward_index: _, earned: _, unstake_deadline: _ } = 
+                dynamic_object_field::remove(&mut staking_pool.id, staker);
+            object::delete(id);
+            return true
+        };
+        
+        false
     }
 
     fun assert_version(version: u64) {
