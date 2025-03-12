@@ -15,7 +15,7 @@ module moonbags::staking_test {
     const ADMIN: address = @0x00;
     const USER_1: address = @0x10;
     const USER_2: address = @0x20;
-    const ONE_HOUR_IN_MS: u64 = ONE_HOUR_IN_MS;
+    const ONE_HOUR_IN_MS: u64 = 60 * 60 * 1000;
 
     const EOutputEqualToExpected: u64 = 0;
 
