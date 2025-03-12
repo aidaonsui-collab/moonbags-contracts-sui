@@ -57,6 +57,7 @@ module moonbags::moonbags_stake {
 
     public struct StakingAccount has key, store {
         id: UID,
+        staker: address,
         balance: u64,
         reward_index: u128,
         earned: u64,
@@ -82,6 +83,7 @@ module moonbags::moonbags_stake {
     public struct StakeEvent has copy, drop, store {
         token_address: String,
         staking_pool: ID,
+        staking_account: ID,
         staker: String,
         amount: u64,
         timestamp: u64,
@@ -90,6 +92,8 @@ module moonbags::moonbags_stake {
     public struct UnstakeEvent has copy, drop, store {
         token_address: String,
         staking_pool: ID,
+        staking_account: ID,
+        is_staking_account_deleted: bool,
         unstaker: String,
         amount: u64,
         timestamp: u64,
@@ -114,6 +118,8 @@ module moonbags::moonbags_stake {
     public struct ClaimStakingPoolEvent has copy, drop, store {
         token_address: String,
         staking_pool: ID,
+        staking_account: ID,
+        is_staking_account_deleted: bool,
         claimer: String,
         reward: u64,
         timestamp: u64,
@@ -316,6 +322,7 @@ module moonbags::moonbags_stake {
             // first time staking
             let new_staking_account = StakingAccount {
                 id              : object::new(ctx),
+                staker          : staker_address,
                 balance         : 0,
                 reward_index    : 0,
                 earned          : 0,
@@ -324,6 +331,7 @@ module moonbags::moonbags_stake {
             dynamic_object_field::add(&mut staking_pool.id, staker_address, new_staking_account);
         };
 
+        let staking_pool_id = object::id(staking_pool);
         let staking_account: &mut StakingAccount = dynamic_object_field::borrow_mut(&mut staking_pool.id, staker_address);
 
         // Update rewards before stake
@@ -341,7 +349,8 @@ module moonbags::moonbags_stake {
 
         let stake_event = StakeEvent {
             token_address       : type_name::into_string(type_name::get<StakingToken>()),
-            staking_pool        : object::id(staking_pool),
+            staking_pool        : staking_pool_id,
+            staking_account     : object::id(staking_account),
             staker              : staker_address.to_ascii_string(),
             amount              : amount_token_staking_in,
             timestamp           : current_ms,
@@ -374,6 +383,7 @@ module moonbags::moonbags_stake {
         let staker_address = ctx.sender();
         assert!(dynamic_object_field::exists_(&staking_pool.id, staker_address), EStakingAccountNotExist);
 
+        let staking_pool_id = object::id(staking_pool);
         let staking_account: &mut StakingAccount = dynamic_object_field::borrow_mut(&mut staking_pool.id, staker_address);
 
         let current_ms = clock::timestamp_ms(clock);
@@ -390,12 +400,24 @@ module moonbags::moonbags_stake {
         let unstake_coin = coin::split(&mut staking_pool.staking_token, unstake_amount, ctx);
         transfer::public_transfer<Coin<StakingToken>>(unstake_coin, staker_address);
 
+        let staking_account_id = object::id(staking_account);
+
+        // Try to clean up the account if it's empty
+        let is_account_deleted = (staking_account.balance == 0 && staking_account.earned == 0);
+        if (is_account_deleted) {
+            let StakingAccount { id, staker: _, balance: _, reward_index: _, earned: _, unstake_deadline: _ } = 
+                dynamic_object_field::remove(&mut staking_pool.id, staker_address);
+            object::delete(id);
+        };
+
         let unstake_event = UnstakeEvent {
-            token_address       : type_name::into_string(type_name::get<StakingToken>()),
-            staking_pool        : object::id(staking_pool),
-            unstaker            : staker_address.to_ascii_string(),
-            amount              : unstake_amount,
-            timestamp           : current_ms,
+            token_address               : type_name::into_string(type_name::get<StakingToken>()),
+            staking_pool                : staking_pool_id,
+            staking_account             : staking_account_id,
+            is_staking_account_deleted  : is_account_deleted,
+            unstaker                    : staker_address.to_ascii_string(),
+            amount                      : unstake_amount,
+            timestamp                   : current_ms,
         };
         emit<UnstakeEvent>(unstake_event);
     }
@@ -423,6 +445,7 @@ module moonbags::moonbags_stake {
         let staker_address = ctx.sender();
         assert!(dynamic_object_field::exists_(&staking_pool.id, staker_address), EStakingAccountNotExist);
 
+        let staking_pool_id = object::id(staking_pool);
         let staking_account: &mut StakingAccount = dynamic_object_field::borrow_mut(&mut staking_pool.id, staker_address);
 
         // Update rewards before claiming
@@ -436,12 +459,24 @@ module moonbags::moonbags_stake {
         let sui_coin = coin::split(&mut staking_pool.sui_token, reward_amount, ctx);
         transfer::public_transfer<Coin<SUI>>(sui_coin, staker_address);
 
+        let staking_account_id = object::id(staking_account);
+
+        // Try to clean up the account if it's empty
+        let is_account_deleted = (staking_account.balance == 0 && staking_account.earned == 0);
+        if (is_account_deleted) {
+            let StakingAccount { id, staker: _, balance: _, reward_index: _, earned: _, unstake_deadline: _ } = 
+                dynamic_object_field::remove(&mut staking_pool.id, staker_address);
+            object::delete(id);
+        };
+
         let claim_staking_pool_event = ClaimStakingPoolEvent {
-            token_address       : type_name::into_string(type_name::get<StakingToken>()),
-            staking_pool        : object::id(staking_pool),
-            claimer             : staker_address.to_ascii_string(),
-            reward              : reward_amount,
-            timestamp           : clock::timestamp_ms(clock),
+            token_address               : type_name::into_string(type_name::get<StakingToken>()),
+            staking_pool                : staking_pool_id,
+            staking_account             : staking_account_id,
+            is_staking_account_deleted  : is_account_deleted,
+            claimer                     : staker_address.to_ascii_string(),
+            reward                      : reward_amount,
+            timestamp                   : clock::timestamp_ms(clock),
         };
         emit<ClaimStakingPoolEvent>(claim_staking_pool_event);
 

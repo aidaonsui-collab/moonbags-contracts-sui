@@ -731,6 +731,250 @@ module moonbags::staking_test {
     }
 
     #[test]
+    fun test_unstake_full_amount_account_deleted() {
+        let mut scenario = test_scenario::begin(USER_1);
+        {
+            moonbags_stake::init_for_testing(scenario.ctx());
+        };
+        scenario.next_tx(USER_1);
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+            
+            // Initialize staking pool
+            moonbags_stake::initialize_staking_pool<StakingToken>(&mut config, &clock, scenario.ctx());
+            
+            // Stake some tokens
+            let stake_amount = 1000;
+            let stake_coin = coin::mint_for_testing<StakingToken>(stake_amount, scenario.ctx());
+            moonbags_stake::stake(&mut config, stake_coin, &clock, scenario.ctx());
+            
+            // Verify account exists
+            let staking_pool = get_staking_pool<StakingToken>(&config);
+            let (pool_id, _, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
+            assert!(dynamic_object_field::exists_(pool_id, USER_1), EOutputEqualToExpected);
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(USER_1);
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let mut clock = clock::create_for_testing(scenario.ctx());
+            
+            // Advance time to allow unstaking
+            clock::increment_for_testing(&mut clock, ONE_HOUR_IN_MS + 1);
+            
+            // Unstake all tokens
+            moonbags_stake::unstake<StakingToken>(&mut config, 1000, &clock, scenario.ctx());
+            
+            // Verify account no longer exists (was deleted)
+            let staking_pool = get_staking_pool<StakingToken>(&config);
+            let (pool_id, _, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
+            assert!(!dynamic_object_field::exists_(pool_id, USER_1), EOutputEqualToExpected);
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.end();
+    }
+
+    #[test]
+    fun test_unstake_with_rewards_account_preserved() {
+        let mut scenario = test_scenario::begin(USER_1);
+        {
+            moonbags_stake::init_for_testing(scenario.ctx());
+        };
+        scenario.next_tx(USER_1);
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+            
+            // Initialize staking pool
+            moonbags_stake::initialize_staking_pool<StakingToken>(&mut config, &clock, scenario.ctx());
+            
+            // Stake some tokens
+            let stake_amount = 1000;
+            let stake_coin = coin::mint_for_testing<StakingToken>(stake_amount, scenario.ctx());
+            moonbags_stake::stake(&mut config, stake_coin, &clock, scenario.ctx());
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(ADMIN);
+        {
+            // Add rewards to generate earned rewards for user
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+            
+            let reward_amount = 500;
+            let reward_coin = coin::mint_for_testing<SUI>(reward_amount, scenario.ctx());
+            moonbags_stake::update_reward_index<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(USER_1);
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let mut clock = clock::create_for_testing(scenario.ctx());
+            
+            // Advance time to allow unstaking
+            clock::increment_for_testing(&mut clock, ONE_HOUR_IN_MS + 1);
+            
+            // Unstake all tokens
+            moonbags_stake::unstake<StakingToken>(&mut config, 1000, &clock, scenario.ctx());
+            
+            // Verify account still exists because there are earned rewards
+            let staking_pool = get_staking_pool<StakingToken>(&config);
+            let (pool_id, _, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
+            assert!(dynamic_object_field::exists_(pool_id, USER_1), EOutputEqualToExpected);
+            
+            // Verify account has 0 balance but earned rewards
+            let staking_account = get_staking_account(pool_id, USER_1);
+            let (balance, _, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
+            assert!(balance == 0, EOutputEqualToExpected);
+            assert!(earned == 500, EOutputEqualToExpected);
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.end();
+    }
+
+    #[test]
+    fun test_account_deletion_after_claim() {
+        let mut scenario = test_scenario::begin(USER_1);
+        {
+            moonbags_stake::init_for_testing(scenario.ctx());
+        };
+        scenario.next_tx(USER_1);
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+            
+            // Initialize staking pool
+            moonbags_stake::initialize_staking_pool<StakingToken>(&mut config, &clock, scenario.ctx());
+            
+            // Stake some tokens
+            let stake_amount = 1000;
+            let stake_coin = coin::mint_for_testing<StakingToken>(stake_amount, scenario.ctx());
+            moonbags_stake::stake(&mut config, stake_coin, &clock, scenario.ctx());
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(ADMIN);
+        {
+            // Add rewards
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+            
+            let reward_amount = 500;
+            let reward_coin = coin::mint_for_testing<SUI>(reward_amount, scenario.ctx());
+            moonbags_stake::update_reward_index<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(USER_1);
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let mut clock = clock::create_for_testing(scenario.ctx());
+            
+            // Verify account exists initially
+            let staking_pool = get_staking_pool<StakingToken>(&config);
+            let (pool_id, _, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
+            assert!(dynamic_object_field::exists_(pool_id, USER_1), EOutputEqualToExpected);
+            
+            // Advance time to allow unstaking
+            clock::increment_for_testing(&mut clock, ONE_HOUR_IN_MS + 1);
+            
+            // Unstake all tokens
+            moonbags_stake::unstake<StakingToken>(&mut config, 1000, &clock, scenario.ctx());
+            
+            // Account should still exist because there are earned rewards
+            let staking_pool = get_staking_pool<StakingToken>(&config);
+            let (pool_id, _, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
+            assert!(dynamic_object_field::exists_(pool_id, USER_1), EOutputEqualToExpected);
+            
+            // Claim all rewards
+            let claimed = moonbags_stake::claim_staking_pool<StakingToken>(&mut config, &clock, scenario.ctx());
+            assert!(claimed == 500, EOutputEqualToExpected);
+            
+            // Account should be deleted after claiming rewards
+            let staking_pool = get_staking_pool<StakingToken>(&config);
+            let (pool_id, _, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
+            assert!(!dynamic_object_field::exists_(pool_id, USER_1), EOutputEqualToExpected);
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.end();
+    }
+
+    #[test]
+    fun test_account_not_deleted_after_claim_with_balance() {
+        let mut scenario = test_scenario::begin(USER_1);
+        {
+            moonbags_stake::init_for_testing(scenario.ctx());
+        };
+        scenario.next_tx(USER_1);
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+            
+            // Initialize staking pool
+            moonbags_stake::initialize_staking_pool<StakingToken>(&mut config, &clock, scenario.ctx());
+            
+            // Stake some tokens
+            let stake_amount = 1000;
+            let stake_coin = coin::mint_for_testing<StakingToken>(stake_amount, scenario.ctx());
+            moonbags_stake::stake(&mut config, stake_coin, &clock, scenario.ctx());
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(ADMIN);
+        {
+            // Add rewards
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+            
+            let reward_amount = 500;
+            let reward_coin = coin::mint_for_testing<SUI>(reward_amount, scenario.ctx());
+            moonbags_stake::update_reward_index<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(USER_1);
+        {
+            let mut config = scenario.take_shared<Configuration>();
+            let clock = clock::create_for_testing(scenario.ctx());
+            
+            // Claim rewards without unstaking
+            let claimed = moonbags_stake::claim_staking_pool<StakingToken>(&mut config, &clock, scenario.ctx());
+            assert!(claimed == 500, EOutputEqualToExpected);
+            
+            // Account should still exist because there's still a balance
+            let staking_pool = get_staking_pool<StakingToken>(&config);
+            let (pool_id, _, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
+            assert!(dynamic_object_field::exists_(pool_id, USER_1), EOutputEqualToExpected);
+            
+            // Check balance is still there
+            let staking_account = get_staking_account(pool_id, USER_1);
+            let (balance, _, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
+            assert!(balance == 1000, EOutputEqualToExpected);
+            assert!(earned == 0, EOutputEqualToExpected);
+            
+            test_scenario::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        scenario.end();
+    }
+
+    #[test]
     fun test_unstake_successful() {
         let mut scenario = test_scenario::begin(USER_1);
         {
