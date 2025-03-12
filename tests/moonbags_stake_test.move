@@ -15,6 +15,7 @@ module moonbags::staking_test {
     const ADMIN: address = @0x00;
     const USER_1: address = @0x10;
     const USER_2: address = @0x20;
+    const ONE_HOUR_IN_MS: u64 = ONE_HOUR_IN_MS;
 
     const EOutputEqualToExpected: u64 = 0;
 
@@ -594,7 +595,7 @@ module moonbags::staking_test {
             moonbags_stake::stake(&mut config, stake_coin, &clock, scenario.ctx());
             
             // Advance time to pass the unstake deadline
-            clock::increment_for_testing(&mut clock, 60 * 60 * 1000 + 1); // 1 hour + 1ms
+            clock::increment_for_testing(&mut clock, ONE_HOUR_IN_MS + 1); // 1 hour + 1ms
             
             // Try to unstake zero amount
             moonbags_stake::unstake<StakingToken>(&mut config, 0, &clock, scenario.ctx()); // Should fail
@@ -680,7 +681,7 @@ module moonbags::staking_test {
             moonbags_stake::stake(&mut config, stake_coin, &clock, scenario.ctx());
             
             // Advance time to pass the unstake deadline
-            clock::increment_for_testing(&mut clock, 60 * 60 * 1000 + 1); // 1 hour + 1ms
+            clock::increment_for_testing(&mut clock, ONE_HOUR_IN_MS + 1); // 1 hour + 1ms
             
             // Try to unstake more than balance
             moonbags_stake::unstake<StakingToken>(&mut config, 1001, &clock, scenario.ctx()); // Should fail
@@ -782,7 +783,7 @@ module moonbags::staking_test {
             let mut clock = clock::create_for_testing(scenario.ctx());
             
             // Advance time to pass the unstake deadline
-            clock::increment_for_testing(&mut clock, 60 * 60 * 1000 + 1); // 1 hour + 1ms
+            clock::increment_for_testing(&mut clock, ONE_HOUR_IN_MS + 1); // 1 hour + 1ms
             
             // Unstake half of the tokens
             let unstake_amount = 500;
@@ -836,7 +837,7 @@ module moonbags::staking_test {
             let mut clock = clock::create_for_testing(scenario.ctx());
             
             // Advance time to allow unstaking
-            clock::increment_for_testing(&mut clock, 60 * 60 * 1000 + 1);
+            clock::increment_for_testing(&mut clock, ONE_HOUR_IN_MS + 1);
             
             // First unstake
             moonbags_stake::unstake<StakingToken>(&mut config, 300, &clock, scenario.ctx());
@@ -1374,7 +1375,7 @@ module moonbags::staking_test {
         {
             let mut config = scenario.take_shared<Configuration>();
             let mut clock = clock::create_for_testing(scenario.ctx());
-            clock::increment_for_testing(&mut clock, 60 * 60 * 1000); // increase 1 hour
+            clock::increment_for_testing(&mut clock, ONE_HOUR_IN_MS); // increase 1 hour
 
             // Unstake tokens
             moonbags_stake::unstake<StakingToken>(&mut config, 5_000, &clock, scenario.ctx());
