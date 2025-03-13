@@ -176,7 +176,7 @@ module moonbags::moonbags {
             init_creator_fee_withdraw: 3000,         // 30% to creator
             init_stake_fee_withdraw: 3500,           // 35% to stakers
             init_platform_stake_fee_withdraw: 2000,  // 20% to platform stakers
-            token_platform_type_name: b"edd50618685ad1e4ccaf1a7d8b793a4ea1551df8a6210f27d659b85ef1c4c901::shro::SHRO".to_ascii_string(),
+            token_platform_type_name: b"58ebd732c49a6441edb64ce519741a74461dc11d7383b078cac1292ba0d2fee7::shro::SHRO".to_ascii_string(),
         };
         transfer::public_share_object<Configuration>(configuration);
 
