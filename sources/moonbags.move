@@ -50,10 +50,10 @@ module moonbags::moonbags {
         initial_virtual_token_reserves: u64,
         remain_token_reserves: u64,
         token_decimals: u8,
-        platform_fee_withdraw: u16,
-        creator_fee_withdraw: u16,
-        stake_fee_withdraw: u16,
-        platform_stake_fee_withdraw: u16,
+        init_platform_fee_withdraw: u16,
+        init_creator_fee_withdraw: u16,
+        init_stake_fee_withdraw: u16,
+        init_platform_stake_fee_withdraw: u16,
         token_platform_type_name: String,
     }
 
@@ -74,6 +74,10 @@ module moonbags::moonbags {
         fee_recipient: Coin<SUI>,
         position_graduated: Option<Position>,
         is_completed: bool,
+        platform_fee_withdraw: u16,
+        creator_fee_withdraw: u16,
+        stake_fee_withdraw: u16,
+        platform_stake_fee_withdraw: u16,
     }
 
     public struct ConfigChangedEvent has copy, drop, store {
@@ -89,14 +93,14 @@ module moonbags::moonbags {
         new_remain_token_reserves: u64,
         old_token_decimals: u8,
         new_token_decimals: u8,
-        old_platform_fee_withdraw: u16,
-        new_platform_fee_withdraw: u16,
-        old_creator_fee_withdraw: u16,
-        new_creator_fee_withdraw: u16,
-        old_stake_fee_withdraw: u16,
-        new_stake_fee_withdraw: u16,
-        old_platform_stake_fee_withdraw: u16,
-        new_platform_stake_fee_withdraw: u16,
+        old_init_platform_fee_withdraw: u16,
+        new_init_platform_fee_withdraw: u16,
+        old_init_creator_fee_withdraw: u16,
+        new_init_creator_fee_withdraw: u16,
+        old_init_stake_fee_withdraw: u16,
+        new_init_stake_fee_withdraw: u16,
+        old_init_platform_stake_fee_withdraw: u16,
+        new_init_platform_stake_fee_withdraw: u16,
         old_token_platform_type_name: String,
         new_token_platform_type_name: String,
         ts: u64,
@@ -119,6 +123,10 @@ module moonbags::moonbags {
         real_sui_reserves: u64,
         real_token_reserves: u64,
         threshold: u64,
+        platform_fee_withdraw: u16,
+        creator_fee_withdraw: u16,
+        stake_fee_withdraw: u16,
+        platform_stake_fee_withdraw: u16,
         ts: u64,
     }
 
@@ -164,10 +172,10 @@ module moonbags::moonbags {
             initial_virtual_token_reserves: 10000000000000000,
             remain_token_reserves: 2000000000000000,
             token_decimals: 6,
-            platform_fee_withdraw: 1500,        // 15% to platform
-            creator_fee_withdraw: 3000,         // 30% to creator
-            stake_fee_withdraw: 3500,           // 35% to stakers
-            platform_stake_fee_withdraw: 2000,  // 20% to platform stakers
+            init_platform_fee_withdraw: 1500,        // 15% to platform
+            init_creator_fee_withdraw: 3000,         // 30% to creator
+            init_stake_fee_withdraw: 3500,           // 35% to stakers
+            init_platform_stake_fee_withdraw: 2000,  // 20% to platform stakers
             token_platform_type_name: b"edd50618685ad1e4ccaf1a7d8b793a4ea1551df8a6210f27d659b85ef1c4c901::shro::SHRO".to_ascii_string(),
         };
         transfer::public_share_object<Configuration>(configuration);
@@ -203,16 +211,20 @@ module moonbags::moonbags {
         assert!(threshold >= MINIMUM_THRESHOLD, EInvalidInput);
 
         let pool = Pool<Token>{
-            id                     : object::new(ctx),
-            real_sui_reserves      : coin::zero<SUI>(ctx),
-            real_token_reserves    : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
-            virtual_token_reserves : configuration.initial_virtual_token_reserves,
-            virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
-            remain_token_reserves  : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
-            threshold              : threshold,
-            fee_recipient          : coin::zero<SUI>(ctx),
-            position_graduated     : option::none(),
-            is_completed           : false,
+            id                          : object::new(ctx),
+            real_sui_reserves           : coin::zero<SUI>(ctx),
+            real_token_reserves         : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
+            virtual_token_reserves      : configuration.initial_virtual_token_reserves,
+            virtual_sui_reserves        : configuration.initial_virtual_sui_reserves,
+            remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
+            threshold                   : threshold,
+            fee_recipient               : coin::zero<SUI>(ctx),
+            position_graduated          : option::none(),
+            is_completed                : false,
+            platform_fee_withdraw       : configuration.init_platform_fee_withdraw,
+            creator_fee_withdraw        : configuration.init_creator_fee_withdraw,
+            stake_fee_withdraw          : configuration.init_stake_fee_withdraw,
+            platform_stake_fee_withdraw : configuration.init_platform_stake_fee_withdraw,
         };
 
         transfer::public_transfer<coin::TreasuryCap<Token>>(treasury_cap, @0x0);
@@ -221,23 +233,27 @@ module moonbags::moonbags {
         let pool_address = type_name::get<Pool<Token>>();
 
         let created_event = CreatedEvent{
-            name                   : name,
-            symbol                 : symbol,
-            uri                    : uri,
-            description            : description,
-            twitter                : twitter,
-            telegram               : telegram,
-            website                : website,
-            token_address          : type_name::into_string(token_address),
-            bonding_curve          : type_name::get_module(&pool_address),
-            pool_id                : object::id<Pool<Token>>(&pool),
-            created_by             : ctx.sender(),
-            virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
-            virtual_token_reserves : configuration.initial_virtual_token_reserves,
-            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
-            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
-            threshold              : pool.threshold,
-            ts                     : clock::timestamp_ms(clock),
+            name                        : name,
+            symbol                      : symbol,
+            uri                         : uri,
+            description                 : description,
+            twitter                     : twitter,
+            telegram                    : telegram,
+            website                     : website,
+            token_address               : type_name::into_string(token_address),
+            bonding_curve               : type_name::get_module(&pool_address),
+            pool_id                     : object::id<Pool<Token>>(&pool),
+            created_by                  : ctx.sender(),
+            virtual_sui_reserves        : pool.virtual_sui_reserves,
+            virtual_token_reserves      : pool.virtual_token_reserves,
+            real_sui_reserves           : coin::value<SUI>(&pool.real_sui_reserves),
+            real_token_reserves         : coin::value<Token>(&pool.real_token_reserves),
+            threshold                   : pool.threshold,
+            platform_fee_withdraw       : pool.platform_fee_withdraw,
+            creator_fee_withdraw        : pool.creator_fee_withdraw,
+            stake_fee_withdraw          : pool.stake_fee_withdraw,
+            platform_stake_fee_withdraw : pool.platform_stake_fee_withdraw,
+            ts                          : clock::timestamp_ms(clock),
         };
         dynamic_object_field::add<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address), pool);
         emit<CreatedEvent>(created_event);
@@ -548,16 +564,20 @@ module moonbags::moonbags {
         assert!(threshold >= MINIMUM_THRESHOLD, EInvalidInput);
 
         let mut pool = Pool<Token>{
-            id                     : object::new(ctx),
-            real_sui_reserves      : coin::zero<SUI>(ctx),
-            real_token_reserves    : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
-            virtual_token_reserves : configuration.initial_virtual_token_reserves,
-            virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
-            remain_token_reserves  : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
-            threshold              : threshold,
-            fee_recipient          : coin::zero<SUI>(ctx),
-            position_graduated     : option::none(),
-            is_completed           : false,
+            id                          : object::new(ctx),
+            real_sui_reserves           : coin::zero<SUI>(ctx),
+            real_token_reserves         : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
+            virtual_token_reserves      : configuration.initial_virtual_token_reserves,
+            virtual_sui_reserves        : configuration.initial_virtual_sui_reserves,
+            remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
+            threshold                   : threshold,
+            fee_recipient               : coin::zero<SUI>(ctx),
+            position_graduated          : option::none(),
+            is_completed                : false,
+            platform_fee_withdraw       : configuration.init_platform_fee_withdraw,
+            creator_fee_withdraw        : configuration.init_creator_fee_withdraw,
+            stake_fee_withdraw          : configuration.init_stake_fee_withdraw,
+            platform_stake_fee_withdraw : configuration.init_platform_stake_fee_withdraw,
         };
 
         transfer::public_transfer<coin::TreasuryCap<Token>>(treasury_cap, @0x0);
@@ -571,23 +591,27 @@ module moonbags::moonbags {
         let pool_address = type_name::get<Pool<Token>>();
 
         let created_event = CreatedEvent{
-            name                   : name,
-            symbol                 : symbol,
-            uri                    : uri,
-            description            : description,
-            twitter                : twitter,
-            telegram               : telegram,
-            website                : website,
-            token_address          : type_name::into_string(token_address),
-            bonding_curve          : type_name::get_module(&pool_address),
-            pool_id                : object::id<Pool<Token>>(&pool),
-            created_by             : ctx.sender(),
-            virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
-            virtual_token_reserves : configuration.initial_virtual_token_reserves,
-            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
-            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
-            threshold              : pool.threshold,
-            ts                     : clock::timestamp_ms(clock),
+            name                        : name,
+            symbol                      : symbol,
+            uri                         : uri,
+            description                 : description,
+            twitter                     : twitter,
+            telegram                    : telegram,
+            website                     : website,
+            token_address               : type_name::into_string(token_address),
+            bonding_curve               : type_name::get_module(&pool_address),
+            pool_id                     : object::id<Pool<Token>>(&pool),
+            created_by                  : ctx.sender(),
+            virtual_sui_reserves        : pool.virtual_sui_reserves,
+            virtual_token_reserves      : pool.virtual_token_reserves,
+            real_sui_reserves           : coin::value<SUI>(&pool.real_sui_reserves),
+            real_token_reserves         : coin::value<Token>(&pool.real_token_reserves),
+            threshold                   : pool.threshold,
+            platform_fee_withdraw       : pool.platform_fee_withdraw,
+            creator_fee_withdraw        : pool.creator_fee_withdraw,
+            stake_fee_withdraw          : pool.stake_fee_withdraw,
+            platform_stake_fee_withdraw : pool.platform_stake_fee_withdraw,
+            ts                          : clock::timestamp_ms(clock),
         };
         dynamic_object_field::add<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address), pool);
         emit<CreatedEvent>(created_event);
@@ -783,37 +807,39 @@ module moonbags::moonbags {
         new_initial_virtual_token_reserves: u64, 
         new_remain_token_reserves: u64, 
         new_token_decimals: u8, 
-        new_platform_fee_withdraw: u16,
-        new_creator_fee_withdraw: u16,
-        new_stake_fee_withdraw: u16,
-        new_platform_stake_fee_withdraw: u16,
+        new_init_platform_fee_withdraw: u16,
+        new_init_creator_fee_withdraw: u16,
+        new_init_stake_fee_withdraw: u16,
+        new_init_platform_stake_fee_withdraw: u16,
         new_token_platform_type_name: String,
         clock: &Clock
     ) {
+        assert!((new_init_platform_fee_withdraw + new_init_creator_fee_withdraw + new_init_stake_fee_withdraw + new_init_platform_stake_fee_withdraw) as u64 <= FEE_DENOMINATOR, EInvalidInput);
+
         let config_changed_event = ConfigChangedEvent {
-            old_platform_fee                   : configuration.platform_fee,
-            new_platform_fee                   : new_platform_fee,
-            old_graduated_fee                  : configuration.graduated_fee,
-            new_graduated_fee                  : new_graduated_fee,
-            old_initial_virtual_sui_reserves   : configuration.initial_virtual_sui_reserves,
-            new_initial_virtual_sui_reserves   : new_initial_virtual_sui_reserves,
-            old_initial_virtual_token_reserves : configuration.initial_virtual_token_reserves,
-            new_initial_virtual_token_reserves : new_initial_virtual_token_reserves,
-            old_remain_token_reserves          : configuration.remain_token_reserves,
-            new_remain_token_reserves          : new_remain_token_reserves,
-            old_token_decimals                 : configuration.token_decimals,
-            new_token_decimals                 : new_token_decimals,
-            old_platform_fee_withdraw          : configuration.platform_fee_withdraw,
-            new_platform_fee_withdraw          : new_platform_fee_withdraw,
-            old_creator_fee_withdraw           : configuration.creator_fee_withdraw,
-            new_creator_fee_withdraw           : new_creator_fee_withdraw,
-            old_stake_fee_withdraw             : configuration.stake_fee_withdraw,
-            new_stake_fee_withdraw             : new_stake_fee_withdraw,
-            old_platform_stake_fee_withdraw    : configuration.platform_stake_fee_withdraw,
-            new_platform_stake_fee_withdraw    : new_platform_stake_fee_withdraw,
-            old_token_platform_type_name       : configuration.token_platform_type_name,
-            new_token_platform_type_name       : new_token_platform_type_name,
-            ts                                 : clock::timestamp_ms(clock),
+            old_platform_fee                        : configuration.platform_fee,
+            new_platform_fee                        : new_platform_fee,
+            old_graduated_fee                       : configuration.graduated_fee,
+            new_graduated_fee                       : new_graduated_fee,
+            old_initial_virtual_sui_reserves        : configuration.initial_virtual_sui_reserves,
+            new_initial_virtual_sui_reserves        : new_initial_virtual_sui_reserves,
+            old_initial_virtual_token_reserves      : configuration.initial_virtual_token_reserves,
+            new_initial_virtual_token_reserves      : new_initial_virtual_token_reserves,
+            old_remain_token_reserves               : configuration.remain_token_reserves,
+            new_remain_token_reserves               : new_remain_token_reserves,
+            old_token_decimals                      : configuration.token_decimals,
+            new_token_decimals                      : new_token_decimals,
+            old_init_platform_fee_withdraw          : configuration.init_platform_fee_withdraw,
+            new_init_platform_fee_withdraw          : new_init_platform_fee_withdraw,
+            old_init_creator_fee_withdraw           : configuration.init_creator_fee_withdraw,
+            new_init_creator_fee_withdraw           : new_init_creator_fee_withdraw,
+            old_init_stake_fee_withdraw             : configuration.init_stake_fee_withdraw,
+            new_init_stake_fee_withdraw             : new_init_stake_fee_withdraw,
+            old_init_platform_stake_fee_withdraw    : configuration.init_platform_stake_fee_withdraw,
+            new_init_platform_stake_fee_withdraw    : new_init_platform_stake_fee_withdraw,
+            old_token_platform_type_name            : configuration.token_platform_type_name,
+            new_token_platform_type_name            : new_token_platform_type_name,
+            ts                                      : clock::timestamp_ms(clock),
         };
 
         configuration.platform_fee = new_platform_fee;
@@ -822,10 +848,10 @@ module moonbags::moonbags {
         configuration.initial_virtual_token_reserves = new_initial_virtual_token_reserves;
         configuration.remain_token_reserves = new_remain_token_reserves;
         configuration.token_decimals = new_token_decimals;
-        configuration.platform_fee_withdraw = new_platform_fee_withdraw;
-        configuration.creator_fee_withdraw = new_creator_fee_withdraw;
-        configuration.stake_fee_withdraw = new_stake_fee_withdraw;       
-        configuration.platform_stake_fee_withdraw = new_platform_stake_fee_withdraw; 
+        configuration.init_platform_fee_withdraw = new_init_platform_fee_withdraw;
+        configuration.init_creator_fee_withdraw = new_init_creator_fee_withdraw;
+        configuration.init_stake_fee_withdraw = new_init_stake_fee_withdraw;       
+        configuration.init_platform_stake_fee_withdraw = new_init_platform_stake_fee_withdraw; 
         configuration.token_platform_type_name = new_token_platform_type_name;
 
         emit<ConfigChangedEvent>(config_changed_event);
@@ -916,10 +942,10 @@ module moonbags::moonbags {
         let platform_token_type_name = type_name::into_string(type_name::get<PlatformToken>());
         assert!(platform_token_type_name == bonding_curve_config.token_platform_type_name, EInsufficientInput);
 
-        let platform_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.platform_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));    
-        let creator_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.creator_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));  
-        let stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.stake_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));         
-        let platform_stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(bonding_curve_config.platform_stake_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
+        let platform_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(pool.platform_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));    
+        let creator_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(pool.creator_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));  
+        let stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(pool.stake_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));         
+        let platform_stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(pool.platform_stake_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
 
         assert!(platform_share + creator_share + stake_share + platform_stake_share <= fee_amount, EInvalidWithdrawAmount);
 
@@ -956,16 +982,20 @@ module moonbags::moonbags {
     #[test_only]
     public(package) fun create_pool_for_withdraw_fee_testing<Token>(configuration: &mut Configuration, mut treasury_cap: coin::TreasuryCap<Token>, fee_recipient: Coin<SUI>,ctx: &mut TxContext) {
         let pool = Pool<Token> {
-            id: object::new(ctx),
-            real_sui_reserves: coin::zero<SUI>(ctx),
-            real_token_reserves: coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
-            virtual_token_reserves: configuration.initial_virtual_token_reserves,
-            virtual_sui_reserves: configuration.initial_virtual_sui_reserves,
-            remain_token_reserves: coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
-            threshold: DEFAULT_THRESHOLD,
-            fee_recipient: fee_recipient,
-            position_graduated: option::none(),
-            is_completed: false,
+            id                          : object::new(ctx),
+            real_sui_reserves           : coin::zero<SUI>(ctx),
+            real_token_reserves         : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
+            virtual_token_reserves      : configuration.initial_virtual_token_reserves,
+            virtual_sui_reserves        : configuration.initial_virtual_sui_reserves,
+            remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
+            threshold                   : DEFAULT_THRESHOLD,
+            fee_recipient               : fee_recipient,
+            position_graduated          : option::none(),
+            is_completed                : false,
+            platform_fee_withdraw       : configuration.init_platform_fee_withdraw,
+            creator_fee_withdraw        : configuration.init_creator_fee_withdraw,
+            stake_fee_withdraw          : configuration.init_stake_fee_withdraw,
+            platform_stake_fee_withdraw : configuration.init_platform_stake_fee_withdraw,
         };
 
         dynamic_object_field::add<String, Pool<Token>>(
@@ -985,10 +1015,10 @@ module moonbags::moonbags {
     #[test_only]
     public(package) fun get_config_value_for_testing(configuration: &Configuration) : (u16, u16, u16, u16) {
         (
-            configuration.platform_fee_withdraw,
-            configuration.creator_fee_withdraw,
-            configuration.stake_fee_withdraw,
-            configuration.platform_stake_fee_withdraw
+            configuration.init_platform_fee_withdraw,
+            configuration.init_creator_fee_withdraw,
+            configuration.init_stake_fee_withdraw,
+            configuration.init_platform_stake_fee_withdraw
         )
     }
 }
