@@ -145,6 +145,7 @@ module moonbags::moonbags {
         real_sui_reserves: u64,
         real_token_reserves: u64,
         pool_id: ID,
+        fee: u64,
         ts: u64,
     }
 
@@ -323,6 +324,7 @@ module moonbags::moonbags {
             real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
             real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id(pool),
+            fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
         emit<TradedEvent>(traded_event);
@@ -373,6 +375,7 @@ module moonbags::moonbags {
             real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
             real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id(pool),
+            fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
         emit<TradedEvent>(traded_event);
@@ -413,6 +416,7 @@ module moonbags::moonbags {
             real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
             real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id(pool),
+            fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
         emit<TradedEvent>(traded_event);
@@ -453,6 +457,7 @@ module moonbags::moonbags {
             real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
             real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id<Pool<Token>>(pool),
+            fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
         emit<TradedEvent>(traded_event);
@@ -497,6 +502,7 @@ module moonbags::moonbags {
             real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
             real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id(pool),
+            fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
         emit<TradedEvent>(traded_event);
@@ -678,6 +684,7 @@ module moonbags::moonbags {
             real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
             real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id<Pool<Token>>(pool),
+            fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
         emit<TradedEvent>(traded_event);
@@ -711,6 +718,7 @@ module moonbags::moonbags {
             real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
             real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
             pool_id                : object::id<Pool<Token>>(pool),
+            fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
         emit<TradedEvent>(traded_event);
