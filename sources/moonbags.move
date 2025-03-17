@@ -46,7 +46,6 @@ module moonbags::moonbags {
         admin: address,
         platform_fee: u64,
         graduated_fee: u64,
-        initial_virtual_sui_reserves: u64,
         initial_virtual_token_reserves: u64,
         remain_token_reserves: u64,
         token_decimals: u8,
@@ -70,7 +69,6 @@ module moonbags::moonbags {
         virtual_token_reserves: u64,
         virtual_sui_reserves: u64,
         remain_token_reserves: Coin<Token>,
-        threshold: u64,
         fee_recipient: Coin<SUI>,
         position_graduated: Option<Position>,
         is_completed: bool,
@@ -85,8 +83,6 @@ module moonbags::moonbags {
         new_platform_fee: u64,
         old_graduated_fee: u64,
         new_graduated_fee: u64,
-        old_initial_virtual_sui_reserves: u64,
-        new_initial_virtual_sui_reserves: u64,
         old_initial_virtual_token_reserves: u64,
         new_initial_virtual_token_reserves: u64,
         old_remain_token_reserves: u64,
@@ -122,7 +118,6 @@ module moonbags::moonbags {
         virtual_token_reserves: u64,
         real_sui_reserves: u64,
         real_token_reserves: u64,
-        threshold: u64,
         platform_fee_withdraw: u16,
         creator_fee_withdraw: u16,
         stake_fee_withdraw: u16,
@@ -168,7 +163,6 @@ module moonbags::moonbags {
             admin: ctx.sender(),
             platform_fee: 100, // 1%
             graduated_fee: 10, // 0,1%
-            initial_virtual_sui_reserves: 3000000000, // 3 sui
             initial_virtual_token_reserves: 10000000000000000,
             remain_token_reserves: 2000000000000000,
             token_decimals: 6,
@@ -210,14 +204,15 @@ module moonbags::moonbags {
         let threshold = option::get_with_default(&threshold, DEFAULT_THRESHOLD);
         assert!(threshold >= MINIMUM_THRESHOLD, EInvalidInput);
 
+        let initial_virtual_sui_reserves = calculate_init_sui_reserves(configuration, threshold);
+
         let pool = Pool<Token>{
             id                          : object::new(ctx),
             real_sui_reserves           : coin::zero<SUI>(ctx),
             real_token_reserves         : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
             virtual_token_reserves      : configuration.initial_virtual_token_reserves,
-            virtual_sui_reserves        : configuration.initial_virtual_sui_reserves,
+            virtual_sui_reserves        : initial_virtual_sui_reserves,
             remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
-            threshold                   : threshold,
             fee_recipient               : coin::zero<SUI>(ctx),
             position_graduated          : option::none(),
             is_completed                : false,
@@ -248,7 +243,6 @@ module moonbags::moonbags {
             virtual_token_reserves      : pool.virtual_token_reserves,
             real_sui_reserves           : coin::value<SUI>(&pool.real_sui_reserves),
             real_token_reserves         : coin::value<Token>(&pool.real_token_reserves),
-            threshold                   : pool.threshold,
             platform_fee_withdraw       : pool.platform_fee_withdraw,
             creator_fee_withdraw        : pool.creator_fee_withdraw,
             stake_fee_withdraw          : pool.stake_fee_withdraw,
@@ -342,7 +336,7 @@ module moonbags::moonbags {
         };
         emit<TradedEvent>(traded_event);
 
-        if (actual_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= pool.threshold) {
+        if (actual_amount_out == token_reserves_in_pool) {
             transfer_pool<Token>(configuration.admin, configuration.graduated_fee,  pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
     }
@@ -394,7 +388,7 @@ module moonbags::moonbags {
         };
         emit<TradedEvent>(traded_event);
 
-        if (actual_token_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= pool.threshold) {
+        if (actual_token_amount_out == token_reserves_in_pool) {
             transfer_pool<Token>(configuration.admin, configuration.graduated_fee ,pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
     }
@@ -403,9 +397,9 @@ module moonbags::moonbags {
         assert!(!pool.is_completed, ECompletedPool);
         assert!(amount_out > 0, EInvalidInput);
 
-        let amount_sui_in = coin::value<SUI>(&coin_sui); // 2010000001
+        let amount_sui_in = coin::value<SUI>(&coin_sui);
         let token_reserves_in_pool = pool.virtual_token_reserves - coin::value<Token>(&pool.remain_token_reserves);
-        let actual_amount_out = min(amount_out, token_reserves_in_pool); // 4000000000000000
+        let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
         let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
         let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
@@ -436,7 +430,7 @@ module moonbags::moonbags {
         };
         emit<TradedEvent>(traded_event);
 
-        if (token_reserves_in_pool == actual_amount_out || coin::value<SUI>(&pool.real_sui_reserves) >= pool.threshold) {
+        if (token_reserves_in_pool == actual_amount_out) {
             transfer_pool<Token>(admin, graduated_fee, pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
     }
@@ -478,7 +472,7 @@ module moonbags::moonbags {
         };
         emit<TradedEvent>(traded_event);
 
-        if (token_reserves_in_pool == actual_amount_out || coin::value<SUI>(&pool.real_sui_reserves) >= pool.threshold) {
+        if (token_reserves_in_pool == actual_amount_out) {
             transfer_pool<Token>(configuration.admin, configuration.graduated_fee, pool, cetus_pools, cetus_global_config , metadata_sui, metadata_token, clock, ctx);
         };
         (coin_sui_out, coin_token_out)
@@ -524,7 +518,7 @@ module moonbags::moonbags {
         };
         emit<TradedEvent>(traded_event);
         
-        if (actual_amount_out == token_reserves_in_pool || coin::value<SUI>(&pool.real_sui_reserves) >= pool.threshold) {
+        if (actual_amount_out == token_reserves_in_pool) {
             transfer_pool<Token>(configuration.admin, configuration.graduated_fee, pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         (coin_sui_out, coin_token_out)
@@ -568,14 +562,15 @@ module moonbags::moonbags {
         let threshold = option::get_with_default(&threshold, DEFAULT_THRESHOLD);
         assert!(threshold >= MINIMUM_THRESHOLD, EInvalidInput);
 
+        let initial_virtual_sui_reserves = calculate_init_sui_reserves(configuration, threshold);
+
         let mut pool = Pool<Token>{
             id                          : object::new(ctx),
             real_sui_reserves           : coin::zero<SUI>(ctx),
             real_token_reserves         : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
             virtual_token_reserves      : configuration.initial_virtual_token_reserves,
-            virtual_sui_reserves        : configuration.initial_virtual_sui_reserves,
+            virtual_sui_reserves        : initial_virtual_sui_reserves,
             remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
-            threshold                   : threshold,
             fee_recipient               : coin::zero<SUI>(ctx),
             position_graduated          : option::none(),
             is_completed                : false,
@@ -611,7 +606,6 @@ module moonbags::moonbags {
             virtual_token_reserves      : pool.virtual_token_reserves,
             real_sui_reserves           : coin::value<SUI>(&pool.real_sui_reserves),
             real_token_reserves         : coin::value<Token>(&pool.real_token_reserves),
-            threshold                   : pool.threshold,
             platform_fee_withdraw       : pool.platform_fee_withdraw,
             creator_fee_withdraw        : pool.creator_fee_withdraw,
             stake_fee_withdraw          : pool.stake_fee_withdraw,
@@ -803,12 +797,28 @@ module moonbags::moonbags {
         init_cetus_pool<Token>(admin, coin_sui, coin_token, pool, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
     }
 
+    fun calculate_init_sui_reserves(configuration: &Configuration, threshold: u64) : u64 {
+        let remain_token_reserves = configuration.remain_token_reserves;
+        let initial_virtual_token_reserves = configuration.initial_virtual_token_reserves;
+        
+        assert!(initial_virtual_token_reserves > remain_token_reserves, EInvalidInput);
+        
+        utils::as_u64(
+            utils::div(
+                utils::mul(
+                    utils::from_u64(threshold), 
+                    utils::from_u64(remain_token_reserves)
+                ),
+                utils::from_u64(initial_virtual_token_reserves - remain_token_reserves)
+            )
+        )
+    }
+
     public entry fun update_config(
         _: &AdminCap, 
         configuration: &mut Configuration, 
         new_platform_fee: u64, 
         new_graduated_fee: u64, 
-        new_initial_virtual_sui_reserves: u64, 
         new_initial_virtual_token_reserves: u64, 
         new_remain_token_reserves: u64, 
         new_token_decimals: u8, 
@@ -826,8 +836,6 @@ module moonbags::moonbags {
             new_platform_fee                        : new_platform_fee,
             old_graduated_fee                       : configuration.graduated_fee,
             new_graduated_fee                       : new_graduated_fee,
-            old_initial_virtual_sui_reserves        : configuration.initial_virtual_sui_reserves,
-            new_initial_virtual_sui_reserves        : new_initial_virtual_sui_reserves,
             old_initial_virtual_token_reserves      : configuration.initial_virtual_token_reserves,
             new_initial_virtual_token_reserves      : new_initial_virtual_token_reserves,
             old_remain_token_reserves               : configuration.remain_token_reserves,
@@ -849,7 +857,6 @@ module moonbags::moonbags {
 
         configuration.platform_fee = new_platform_fee;
         configuration.graduated_fee = new_graduated_fee;
-        configuration.initial_virtual_sui_reserves = new_initial_virtual_sui_reserves;
         configuration.initial_virtual_token_reserves = new_initial_virtual_token_reserves;
         configuration.remain_token_reserves = new_remain_token_reserves;
         configuration.token_decimals = new_token_decimals;
@@ -991,9 +998,8 @@ module moonbags::moonbags {
             real_sui_reserves           : coin::zero<SUI>(ctx),
             real_token_reserves         : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
             virtual_token_reserves      : configuration.initial_virtual_token_reserves,
-            virtual_sui_reserves        : configuration.initial_virtual_sui_reserves,
+            virtual_sui_reserves        : calculate_init_sui_reserves(configuration, DEFAULT_THRESHOLD),
             remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
-            threshold                   : DEFAULT_THRESHOLD,
             fee_recipient               : fee_recipient,
             position_graduated          : option::none(),
             is_completed                : false,
