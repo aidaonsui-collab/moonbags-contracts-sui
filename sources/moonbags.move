@@ -23,7 +23,7 @@ module moonbags::moonbags {
 
     const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
     const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
-    const VERSION: u64 = 1;
+    const VERSION: u64 = 2;
     const FEE_DENOMINATOR: u64 = 10000;
 
     // const ENotHavePermission: u64 = 1;
@@ -580,17 +580,9 @@ module moonbags::moonbags {
             platform_stake_fee_withdraw : configuration.init_platform_stake_fee_withdraw,
         };
 
-        transfer::public_transfer<coin::TreasuryCap<Token>>(treasury_cap, @0x0);
-
         let token_address = type_name::get<Token>();
-        if (coin::value<SUI>(&coin_sui) > 0) {
-            buy_direct<Token>(configuration.admin, configuration.graduated_fee, coin_sui, &mut pool, amount_out, configuration.platform_fee, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
-        } else {
-            coin::destroy_zero<SUI>(coin_sui);
-        };
         let pool_address = type_name::get<Pool<Token>>();
-
-        let created_event = CreatedEvent{
+        let created_event = CreatedEvent {
             name                        : name,
             symbol                      : symbol,
             uri                         : uri,
@@ -612,6 +604,15 @@ module moonbags::moonbags {
             platform_stake_fee_withdraw : pool.platform_stake_fee_withdraw,
             ts                          : clock::timestamp_ms(clock),
         };
+
+        transfer::public_transfer<coin::TreasuryCap<Token>>(treasury_cap, @0x0);
+
+        if (coin::value<SUI>(&coin_sui) > 0) {
+            buy_direct<Token>(configuration.admin, configuration.graduated_fee, coin_sui, &mut pool, amount_out, configuration.platform_fee, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
+        } else {
+            coin::destroy_zero<SUI>(coin_sui);
+        };
+
         dynamic_object_field::add<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address), pool);
         emit<CreatedEvent>(created_event);
 
