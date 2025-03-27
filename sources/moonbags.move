@@ -33,6 +33,7 @@ module moonbags::moonbags {
     const ECompletedPool: u64 = 5;
     const EInsufficientInput: u64 = 6;
     const EExistTokenSupply: u64 = 7;
+    const EPoolNotComplete: u64 = 9;
     const ENotUpgrade: u64 = 10;
     const EInvalidWithdrawPool: u64 = 11;
     const EInvalidWithdrawAmount: u64 = 12;
@@ -164,8 +165,8 @@ module moonbags::moonbags {
             admin: ctx.sender(),
             platform_fee: 100, // 1%
             graduated_fee: 10, // 0,1%
-            initial_virtual_token_reserves: 10000000000000000,
-            remain_token_reserves: 2000000000000000,
+            initial_virtual_token_reserves: 10000000000000, // 10 million
+            remain_token_reserves: 2000000000000, // 2 million
             token_decimals: 6,
             init_platform_fee_withdraw: 1500,        // 15% to platform
             init_creator_fee_withdraw: 3000,         // 30% to creator
@@ -263,15 +264,15 @@ module moonbags::moonbags {
 
         assert!(coin::value<Token>(&coin_token) > 0 || coin::value<SUI>(&coin_sui) > 0, EInvalidInput);
 
+        pool.virtual_token_reserves = pool.virtual_token_reserves + coin::value<Token>(&coin_token);
+        pool.virtual_sui_reserves = pool.virtual_sui_reserves + coin::value<SUI>(&coin_sui);
+
         if (coin::value<Token>(&coin_token) > 0) {
             pool.virtual_token_reserves = pool.virtual_token_reserves - amount_token_out;
         };
         if (coin::value<SUI>(&coin_sui) > 0) {
             pool.virtual_sui_reserves = pool.virtual_sui_reserves - amount_sui_out;
         };
-
-        pool.virtual_token_reserves = pool.virtual_token_reserves + coin::value<Token>(&coin_token);
-        pool.virtual_sui_reserves = pool.virtual_sui_reserves + coin::value<SUI>(&coin_sui);
 
         assert_lp_value_is_increased_or_not_changed(before_virtual_token_reserves, before_virtual_sui_reserves, pool.virtual_token_reserves, pool.virtual_sui_reserves);
 
@@ -283,11 +284,11 @@ module moonbags::moonbags {
 
     public fun assert_pool_not_completed<Token>(configuration: &Configuration) {
         let token_address = type_name::get<Token>();
-        assert!(dynamic_object_field::borrow<String, Pool<Token>>(&configuration.id, type_name::get_address(&token_address)).is_completed, 9);
+        assert!(dynamic_object_field::borrow<String, Pool<Token>>(&configuration.id, type_name::get_address(&token_address)).is_completed, EPoolNotComplete);
     }
 
     fun assert_lp_value_is_increased_or_not_changed(before_token_reserves: u64, before_sui_reserves: u64, after_token_reserves: u64, after_sui_reserves: u64) {
-        assert!((before_token_reserves as u128) * (before_sui_reserves as u128) <= (after_token_reserves as u128) * (after_sui_reserves as u128), 2);
+        assert!((before_token_reserves as u128) * (before_sui_reserves as u128) <= (after_token_reserves as u128) * (after_sui_reserves as u128), EInvalidInput);
     }
 
     fun assert_version(version: u64) {
@@ -689,7 +690,7 @@ module moonbags::moonbags {
 
         let amount_sui_out = curves::calculate_remove_liquidity_return(pool.virtual_token_reserves, pool.virtual_sui_reserves, amount_in);
         let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_out), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
-        assert!(amount_sui_out - fee >= amount_out_min, 2);
+        assert!(amount_sui_out - fee >= amount_out_min, EInvalidInput);
         let (coin_token_out, mut coin_sui_out) = swap<Token>(pool, coin_token, coin::zero<SUI>(ctx), 0, amount_sui_out, ctx);
         pool.virtual_sui_reserves = pool.virtual_sui_reserves - coin::value<SUI>(&coin_sui_out);
 
@@ -726,7 +727,7 @@ module moonbags::moonbags {
 
         let amount_sui_out = curves::calculate_remove_liquidity_return(pool.virtual_token_reserves, pool.virtual_sui_reserves, amount_in);
         let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_out), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
-        assert!(amount_sui_out - fee >= amount_out_min, 2);
+        assert!(amount_sui_out - fee >= amount_out_min, EInvalidInput);
         let (coin_token_out, mut coin_sui_out) = swap<Token>(pool, coin_token, coin::zero<SUI>(ctx), 0, amount_sui_out, ctx);
         pool.virtual_sui_reserves = pool.virtual_sui_reserves - coin::value<SUI>(&coin_sui_out);
 
@@ -977,7 +978,7 @@ module moonbags::moonbags {
     }
 
     fun sqrt(number: u256) : u128 {
-        assert!(number > 0, 1);
+        assert!(number > 0, EInvalidInput);
         let mut result = number;
         let mut next_estimate = (number + 1) / 2;
         while (next_estimate < result) {
@@ -1045,5 +1046,114 @@ module moonbags::moonbags {
     public(package) fun borrow_mut_pool<Token>(configuration: &mut Configuration): &mut Pool<Token> {
         let token_address = type_name::get<Token>();
         dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address))
+    }
+
+    #[test_only]
+    public(package) fun get_pool_info_for_testing<Token>(configuration: &Configuration) : (u64, u64, u64, u64, bool, u64) {
+        let token_address = type_name::get<Token>();
+        let pool = dynamic_object_field::borrow<String, Pool<Token>>(&configuration.id, type_name::get_address(&token_address));
+        
+        (
+            coin::value(&pool.real_sui_reserves),
+            coin::value(&pool.real_token_reserves),
+            pool.virtual_sui_reserves,
+            pool.virtual_token_reserves,
+            pool.is_completed,
+            coin::value(&pool.fee_recipient)
+        )
+    }
+
+    // @notion: Mimic of the function `buy_exact_out` for testing purposes
+    #[test_only]
+    public(package) fun buy_exact_out_without_init_cetus<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out: u64, ctx: &mut TxContext) {
+        assert_version(configuration.version);
+
+        let token_address = type_name::get<Token>();
+        let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
+
+        assert!(!pool.is_completed, ECompletedPool);
+        assert!(amount_out > 0, EInvalidInput);
+
+        let amount_sui_in = coin::value<SUI>(&coin_sui);
+        let token_reserves_in_pool = pool.virtual_token_reserves - coin::value<Token>(&pool.remain_token_reserves);
+        let actual_amount_out = min(amount_out, token_reserves_in_pool);
+
+        let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
+        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
+
+        coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui, fee, ctx));
+
+        assert!(amount_sui_in >= amount_in_swap + fee, EInsufficientInput);
+
+        let (coin_token_out, coin_sui_out) = swap<Token>(pool, coin::zero<Token>(ctx), coin_sui, actual_amount_out, amount_sui_in - amount_in_swap - fee, ctx);
+
+        pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
+
+        transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
+        transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
+
+        if (actual_amount_out == token_reserves_in_pool) {
+            transfer_pool_without_init_cetus<Token>(configuration.admin, configuration.graduated_fee,  pool, ctx);
+        };
+    }
+
+    // @notion: Mimic of the function `buy_exact_in` for testing purposes
+    #[test_only]
+    public(package) fun buy_exact_in_without_init_cetus<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, ctx: &mut TxContext) {
+        assert_version(configuration.version);
+        let amount_sui_in = coin::value<SUI>(&coin_sui);
+
+        let token_address = type_name::get<Token>();
+        let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
+
+        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_sui_in), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
+
+        coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui, fee, ctx));
+
+        let amount_in_swap = amount_sui_in - fee;
+
+        assert!(!pool.is_completed, ECompletedPool);
+        assert!(amount_sui_in > 0, EInvalidInput);
+        let token_reserves_in_pool = pool.virtual_token_reserves - coin::value<Token>(&pool.remain_token_reserves);
+
+        let amount_out_swap = curves::calculate_remove_liquidity_return(pool.virtual_sui_reserves, pool.virtual_token_reserves, amount_in_swap) - 1;
+        let actual_token_amount_out = min(amount_out_swap, token_reserves_in_pool);
+        let actual_sui_amount_in = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_token_amount_out) + 1;
+        assert!(amount_sui_in >= amount_in_swap + fee, EInsufficientInput);
+
+        let sui_amount_remain = amount_in_swap - actual_sui_amount_in;
+
+        let (coin_token_out, coin_sui_out) = swap<Token>(pool, coin::zero<Token>(ctx), coin_sui, actual_token_amount_out, sui_amount_remain, ctx);
+
+        pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
+
+        transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
+        transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
+
+        if (actual_token_amount_out == token_reserves_in_pool) {
+            transfer_pool_without_init_cetus<Token>(configuration.admin, configuration.graduated_fee,  pool, ctx);
+        };
+    }
+
+    // @notion: Mimic of the function `transfer_pool` for testing purposes
+    #[test_only]
+    fun transfer_pool_without_init_cetus<Token>(admin: address, graduated_fee: u64, pool: &mut Pool<Token>, ctx: &mut TxContext) {
+        pool.is_completed = true;
+
+        let real_token_reserves = &pool.real_token_reserves;
+        let remain_token_reserves = &pool.remain_token_reserves;
+        let real_sui_reserves = &pool.real_sui_reserves;
+
+        let mut coin_token = coin::split<Token>(&mut pool.real_token_reserves, coin::value<Token>(real_token_reserves), ctx);
+        coin::join<Token>(&mut coin_token, coin::split<Token>(&mut pool.remain_token_reserves, coin::value<Token>(remain_token_reserves), ctx));
+
+        let mut coin_sui = coin::split<SUI>(&mut pool.real_sui_reserves, coin::value<SUI>(real_sui_reserves), ctx);
+
+        let sui_graduated_fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(coin::value<SUI>(&coin_sui)), utils::from_u64(graduated_fee)), utils::from_u64(FEE_DENOMINATOR)));
+        transfer::public_transfer<Coin<SUI>>(coin::split<SUI>(&mut coin_sui, sui_graduated_fee, ctx), admin);
+
+        // Transfer the remaining coins to the admin
+        transfer::public_transfer<Coin<Token>>(coin_token, admin);
+        transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
     }
 }
