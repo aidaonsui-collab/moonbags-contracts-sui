@@ -78,6 +78,7 @@ module moonbags::moonbags {
         creator_fee_withdraw: u16,
         stake_fee_withdraw: u16,
         platform_stake_fee_withdraw: u16,
+        threshold: u64,
     }
 
     public struct ConfigChangedEvent has copy, drop, store {
@@ -124,6 +125,7 @@ module moonbags::moonbags {
         creator_fee_withdraw: u16,
         stake_fee_withdraw: u16,
         platform_stake_fee_withdraw: u16,
+        threshold: u64,
         ts: u64,
     }
 
@@ -222,6 +224,7 @@ module moonbags::moonbags {
             creator_fee_withdraw        : configuration.init_creator_fee_withdraw,
             stake_fee_withdraw          : configuration.init_stake_fee_withdraw,
             platform_stake_fee_withdraw : configuration.init_platform_stake_fee_withdraw,
+            threshold                   : threshold,
         };
 
         transfer::public_transfer<coin::TreasuryCap<Token>>(treasury_cap, @0x0);
@@ -249,6 +252,7 @@ module moonbags::moonbags {
             creator_fee_withdraw        : pool.creator_fee_withdraw,
             stake_fee_withdraw          : pool.stake_fee_withdraw,
             platform_stake_fee_withdraw : pool.platform_stake_fee_withdraw,
+            threshold                   : threshold,
             ts                          : clock::timestamp_ms(clock),
         };
         dynamic_object_field::add<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address), pool);
@@ -580,6 +584,7 @@ module moonbags::moonbags {
             creator_fee_withdraw        : configuration.init_creator_fee_withdraw,
             stake_fee_withdraw          : configuration.init_stake_fee_withdraw,
             platform_stake_fee_withdraw : configuration.init_platform_stake_fee_withdraw,
+            threshold                   : threshold,
         };
 
         let token_address = type_name::get<Token>();
@@ -604,6 +609,7 @@ module moonbags::moonbags {
             creator_fee_withdraw        : pool.creator_fee_withdraw,
             stake_fee_withdraw          : pool.stake_fee_withdraw,
             platform_stake_fee_withdraw : pool.platform_stake_fee_withdraw,
+            threshold                   : threshold,
             ts                          : clock::timestamp_ms(clock),
         };
 
@@ -1010,6 +1016,7 @@ module moonbags::moonbags {
             creator_fee_withdraw        : configuration.init_creator_fee_withdraw,
             stake_fee_withdraw          : configuration.init_stake_fee_withdraw,
             platform_stake_fee_withdraw : configuration.init_platform_stake_fee_withdraw,
+            threshold                   : DEFAULT_THRESHOLD,
         };
 
         dynamic_object_field::add<String, Pool<Token>>(
