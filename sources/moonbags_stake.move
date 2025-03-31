@@ -15,17 +15,16 @@ module moonbags::moonbags_stake {
     const EStakingCreatorNotExist: u64 = 2;
     const EStakingAccountNotExist: u64 = 3;
     const EAccountBalanceNotEnough: u64 = 4;
-    const ENoStakers: u64 = 5;
-    const EInvalidCreator: u64 = 6;
-    const EInvalidAmount: u64 = 7;
-    const ERewardToClaimNotValid: u64 = 8;
-    const EUnstakeDeadlineNotAllow: u64 = 9;
-    const ENotUpgrade: u64 = 10;
-    const EWrongVersion: u64 = 11;
+    const EInvalidCreator: u64 = 5;
+    const EInvalidAmount: u64 = 6;
+    const ERewardToClaimNotValid: u64 = 7;
+    const EUnstakeDeadlineNotAllow: u64 = 8;
+    const ENotUpgrade: u64 = 9;
+    const EWrongVersion: u64 = 10;
 
     // === Constants ===
     const MULTIPLIER: u128 = 1_000_000_000; // 1e9
-    const VERSION: u64 = 1;
+    const VERSION: u64 = 2;
 
     // === Structs ===
     public struct AdminCap has key {
@@ -242,8 +241,10 @@ module moonbags::moonbags_stake {
             &mut configuration.id,
             staking_pool_type_name
         );
-
-        assert!(staking_pool.total_supply > 0, ENoStakers);
+        if (staking_pool.total_supply == 0) {
+            transfer::public_transfer(reward_sui_coin, configuration.admin);
+            return
+        };
 
         let reward_amount = coin::value<SUI>(&reward_sui_coin);
         assert!(reward_amount > 0, EInvalidAmount);
@@ -542,7 +543,8 @@ module moonbags::moonbags_stake {
         staking_account.earned + calculate_rewards(staking_pool.reward_index, staking_account)
     }
 
-    public entry fun update_config(_: &AdminCap, configuration: &mut Configuration, new_deny_unstake_duration_ms: u64) {
+    public entry fun update_config(_: &AdminCap, configuration: &mut Configuration, new_admin: address, new_deny_unstake_duration_ms: u64) {
+        configuration.admin = new_admin;
         configuration.deny_unstake_duration_ms = new_deny_unstake_duration_ms;
     }
 
@@ -551,8 +553,7 @@ module moonbags::moonbags_stake {
         configuration.version = VERSION;
     }
 
-    public entry fun transfer_admin(admin_cap: AdminCap, configuration: &mut Configuration, new_admin: address) {
-        configuration.admin = new_admin;
+    public entry fun transfer_admin(admin_cap: AdminCap, new_admin: address) {
         transfer::transfer(admin_cap, new_admin);
     }
 
