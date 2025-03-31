@@ -6,7 +6,7 @@ module moonbags::staking_test {
 
     use sui::test_scenario::Self;
     use sui::clock;
-    use sui::coin::Self;
+    use sui::coin::{Self, Coin};
     use sui::sui::SUI;
     use sui::dynamic_object_field;
     
@@ -127,7 +127,6 @@ module moonbags::staking_test {
     }
 
     #[test]
-    #[expected_failure(abort_code = moonbags_stake::ENoStakers)]
     fun test_update_reward_index_no_stakers() {
         let mut scenario = test_scenario::begin(ADMIN);
         {
@@ -140,16 +139,33 @@ module moonbags::staking_test {
 
             // Create staking pool
             moonbags_stake::initialize_staking_pool<StakingToken>(&mut config, &clock, scenario.ctx());
-
+            
             // Try to update reward index with no stakers
             let reward_amount = 1_000;
             let reward_coin = coin::mint_for_testing<SUI>(reward_amount, scenario.ctx());
             
-            // This should fail with ENoStakers
+            // This should now transfer the reward back to admin and return
             moonbags_stake::update_reward_index<StakingToken>(&mut config, reward_coin, &clock, scenario.ctx());
 
+            // Verify staking pool values remain unchanged
+            let staking_pool = get_staking_pool<StakingToken>(&config);
+            let (_, after_staking_value, after_sui_value, after_supply, after_reward_index) = 
+                moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
+            
+            assert!(after_staking_value == 0, EOutputEqualToExpected);
+            assert!(after_sui_value == 0, EOutputEqualToExpected);
+            assert!(after_supply == 0, EOutputEqualToExpected);
+            assert!(after_reward_index == 0, EOutputEqualToExpected);
+            
             test_scenario::return_shared(config);
             clock::destroy_for_testing(clock);
+        };
+        scenario.next_tx(ADMIN);
+        {
+            // Check admin received the SUI transfer
+            let coin_balance = scenario.take_from_sender<Coin<SUI>>();
+            assert!(coin::value(&coin_balance) == 1_000, EOutputEqualToExpected);
+            scenario.return_to_sender(coin_balance);
         };
         scenario.end();
     }
