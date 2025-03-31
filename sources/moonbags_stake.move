@@ -24,7 +24,7 @@ module moonbags::moonbags_stake {
 
     // === Constants ===
     const MULTIPLIER: u128 = 1_000_000_000; // 1e9
-    const VERSION: u64 = 2;
+    const VERSION: u64 = 1;
 
     // === Structs ===
     public struct AdminCap has key {

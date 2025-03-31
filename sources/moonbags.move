@@ -23,7 +23,7 @@ module moonbags::moonbags {
 
     const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
     const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
-    const VERSION: u64 = 2;
+    const VERSION: u64 = 1;
     const FEE_DENOMINATOR: u64 = 10000;
 
     // const ENotHavePermission: u64 = 1;
