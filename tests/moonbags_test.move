@@ -122,11 +122,11 @@ module moonbags::moonbags_test {
             let (_, creator_fee_withdraw, stake_fee_withdraw, platform_stake_fee_withdraw) = moonbags::get_config_value_for_testing(&bonding_config);
 
             let staking_pool = get_staking_pool<TestToken>(&stake_config);
-            let (_, _, sui_reward_value, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
+            let (_, _, sui_reward_value, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
             assert!(sui_reward_value == RECIPIENT_FEE * (stake_fee_withdraw as u64) / 10_000, EOutputNotEqualToExpected);
 
             let staking_pool = get_staking_pool<SHRO>(&stake_config);
-            let (_, _, sui_reward_value, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
+            let (_, _, sui_reward_value, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
             assert!(sui_reward_value == RECIPIENT_FEE * (platform_stake_fee_withdraw as u64) / 10_000, EOutputNotEqualToExpected);
 
             let staking_pool = get_creator_pool<TestToken>(&stake_config);
