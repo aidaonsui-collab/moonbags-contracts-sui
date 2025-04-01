@@ -45,6 +45,7 @@ module moonbags::moonbags_stake {
         sui_token: Coin<SUI>,
         total_supply: u64,
         reward_index: u128,
+        pending_initial_rewards: u64,
     }
 
     #[allow(lint(coin_field))]
@@ -168,11 +169,12 @@ module moonbags::moonbags_stake {
         };
 
         let staking_pool = StakingPool<StakingToken> {
-            id                  : object::new(ctx),
-            staking_token       : coin::zero<StakingToken>(ctx),
-            sui_token           : coin::zero<SUI>(ctx),
-            total_supply        : 0,
-            reward_index        : 0,
+            id                      : object::new(ctx),
+            staking_token           : coin::zero<StakingToken>(ctx),
+            sui_token               : coin::zero<SUI>(ctx),
+            total_supply            : 0,
+            reward_index            : 0,
+            pending_initial_rewards : 0,
         };
 
         let initialize_staking_pool_event = InitializeStakingPoolEvent {
@@ -241,13 +243,16 @@ module moonbags::moonbags_stake {
             &mut configuration.id,
             staking_pool_type_name
         );
-        if (staking_pool.total_supply == 0) {
-            transfer::public_transfer(reward_sui_coin, configuration.admin);
-            return
-        };
 
         let reward_amount = coin::value<SUI>(&reward_sui_coin);
         assert!(reward_amount > 0, EInvalidAmount);
+
+        // no stakers
+        if (staking_pool.total_supply == 0) {
+            staking_pool.pending_initial_rewards = staking_pool.pending_initial_rewards + reward_amount;
+            coin::join(&mut staking_pool.sui_token, reward_sui_coin);
+            return
+        };
 
         staking_pool.reward_index = staking_pool.reward_index + (reward_amount as u128) * MULTIPLIER / (staking_pool.total_supply as u128);
 
@@ -326,9 +331,10 @@ module moonbags::moonbags_stake {
                 staker          : staker_address,
                 balance         : 0,
                 reward_index    : 0,
-                earned          : 0,
+                earned          : staking_pool.pending_initial_rewards,
                 unstake_deadline: 0,
             };
+            staking_pool.pending_initial_rewards = 0;
             dynamic_object_field::add(&mut staking_pool.id, staker_address, new_staking_account);
         };
 
@@ -618,13 +624,14 @@ module moonbags::moonbags_stake {
     }
 
     #[test_only]
-    public(package) fun get_staking_pool_values_for_testing<StakingToken>(pool: &StakingPool<StakingToken>): (&UID ,u64, u64, u64, u128) {
+    public(package) fun get_staking_pool_values_for_testing<StakingToken>(pool: &StakingPool<StakingToken>): (&UID ,u64, u64, u64, u128, u64) {
         (
             &pool.id,
             coin::value(&pool.staking_token),
             coin::value(&pool.sui_token),
             pool.total_supply,
             pool.reward_index,
+            pool.pending_initial_rewards,
         )
     }
 
