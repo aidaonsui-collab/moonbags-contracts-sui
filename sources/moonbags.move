@@ -18,13 +18,13 @@ module moonbags::moonbags {
     use cetus_clmm::factory::Pools;
     use cetus_clmm::pool_creator::Self;
     use cetus_clmm::config::GlobalConfig;
-    use cetus_clmm::position::Position;
     use cetus_clmm::pool::{Self, Pool as CetusPool};
 
     const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
     const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
     const VERSION: u64 = 1;
     const FEE_DENOMINATOR: u64 = 10000;
+    const POSITION_GRADUATED_FIELD: vector<u8> = b"position_graduated";
 
     // const ENotHavePermission: u64 = 1;
     const EInvalidInput: u64 = 2;
@@ -72,7 +72,6 @@ module moonbags::moonbags {
         virtual_sui_reserves: u64,
         remain_token_reserves: Coin<Token>,
         fee_recipient: Coin<SUI>,
-        position_graduated: Option<Position>,
         is_completed: bool,
         platform_fee_withdraw: u16,
         creator_fee_withdraw: u16,
@@ -218,7 +217,6 @@ module moonbags::moonbags {
             virtual_sui_reserves        : initial_virtual_sui_reserves,
             remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
             fee_recipient               : coin::zero<SUI>(ctx),
-            position_graduated          : option::none(),
             is_completed                : false,
             platform_fee_withdraw       : configuration.init_platform_fee_withdraw,
             creator_fee_withdraw        : configuration.init_creator_fee_withdraw,
@@ -578,7 +576,6 @@ module moonbags::moonbags {
             virtual_sui_reserves        : initial_virtual_sui_reserves,
             remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
             fee_recipient               : coin::zero<SUI>(ctx),
-            position_graduated          : option::none(),
             is_completed                : false,
             platform_fee_withdraw       : configuration.init_platform_fee_withdraw,
             creator_fee_withdraw        : configuration.init_creator_fee_withdraw,
@@ -918,7 +915,7 @@ module moonbags::moonbags {
                 coin_token, coin_sui, metadata_token, metadata_sui,
                 true, clock, ctx
             );
-            option::fill(&mut pool.position_graduated, position);
+            dynamic_object_field::add(&mut pool.id, POSITION_GRADUATED_FIELD, position);
             transfer::public_transfer<Coin<Token>>(coin_token, admin);
             transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
         } else {
@@ -928,7 +925,7 @@ module moonbags::moonbags {
                 coin_sui, coin_token, metadata_sui, metadata_token,
                 false, clock, ctx
             );
-            option::fill(&mut pool.position_graduated, position);
+            dynamic_object_field::add(&mut pool.id, POSITION_GRADUATED_FIELD, position);
             transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
             transfer::public_transfer<Coin<Token>>(coin_token, admin);
         };
@@ -942,10 +939,11 @@ module moonbags::moonbags {
         // claim fee after graduating
         if (cetus_pool.is_some()) {
             assert!(pool.is_completed, EInvalidWithdrawPool);
-            assert!(pool.position_graduated.is_some(), EInvalidWithdrawPool);
+            assert!(dynamic_object_field::exists_(&pool.id, POSITION_GRADUATED_FIELD), EInvalidWithdrawPool);
 
+            let graduated_position = dynamic_object_field::borrow(&pool.id, POSITION_GRADUATED_FIELD);
             let (token_fee_balance, sui_fee_balance) = pool::collect_fee<Token, SUI>(
-                cetus_config, option::borrow_mut(cetus_pool), option::borrow(&pool.position_graduated), true
+                cetus_config, option::borrow_mut(cetus_pool), graduated_position, true
             );
 
             let token_coin = coin::from_balance(token_fee_balance, ctx);
@@ -1010,7 +1008,6 @@ module moonbags::moonbags {
             virtual_sui_reserves        : calculate_init_sui_reserves(configuration, DEFAULT_THRESHOLD),
             remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
             fee_recipient               : fee_recipient,
-            position_graduated          : option::none(),
             is_completed                : false,
             platform_fee_withdraw       : configuration.init_platform_fee_withdraw,
             creator_fee_withdraw        : configuration.init_creator_fee_withdraw,
