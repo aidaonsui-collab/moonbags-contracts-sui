@@ -885,8 +885,8 @@ module moonbags::moonbags {
     /*
      * explanation of some magic numbers:
      * cetus tick bound is (-443636, 443636)
-     * standard tick spacing is 60
-     * tick_upper_idx = 443636 - 443636 % 60 = 443580
+     * tick spacing is 200 (1%)
+     * tick_upper_idx = 443636 - 443636 % 200 = 443600 (full range)
      * sqrt(340282366920938463463374607431768211456) = sqrt(2**128) = 2**64 (Q64)
      */
     public entry fun init_cetus_pool<Token>(admin: address, coin_sui: Coin<SUI>, coin_token: Coin<Token>, pool: &mut Pool<Token>, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
@@ -911,10 +911,10 @@ module moonbags::moonbags {
             };
             i = i + 1;
         };
-        if (is_token_first) {
+      if (is_token_first) {
             let (position, coin_token, coin_sui) = pool_creator::create_pool_v2<Token, SUI>(
-                cetus_config, cetus_pools, 60, sqrt(340282366920938463463374607431768211456 * sui_amount / token_amount),
-                string::utf8(b""), 4294523716, 443580,
+                cetus_config, cetus_pools, 200, sqrt(340282366920938463463374607431768211456 * sui_amount / token_amount),
+                string::utf8(b""), 4294523696, 443600,
                 coin_token, coin_sui, metadata_token, metadata_sui,
                 true, clock, ctx
             );
@@ -924,8 +924,8 @@ module moonbags::moonbags {
             transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
         } else {
             let (position, coin_sui, coin_token) = pool_creator::create_pool_v2<SUI, Token>(
-                cetus_config, cetus_pools, 60, sqrt(340282366920938463463374607431768211456 * token_amount / sui_amount),
-                string::utf8(b""), 4294523716, 443580,
+                cetus_config, cetus_pools, 200, sqrt(340282366920938463463374607431768211456 * token_amount / sui_amount),
+                string::utf8(b""), 4294523696, 443600,
                 coin_sui, coin_token, metadata_sui, metadata_token,
                 false, clock, ctx
             );
