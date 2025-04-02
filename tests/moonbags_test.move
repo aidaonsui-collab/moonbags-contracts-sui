@@ -6,8 +6,6 @@ module moonbags::moonbags_test {
     use sui::sui::SUI;
     use std::string;
 
-    use cetus_clmm::pool::{Pool as CetusPool};
-
     use moonbags::moonbags as mb;
     use moonbags::moonbags::{
         Self,
@@ -76,7 +74,7 @@ module moonbags::moonbags_test {
     }
 
     #[test]
-    fun withdraw_fee_testing() {
+    fun test_withdraw_fee_bonding_curve() {
         let mut scenario = test_scenario::begin(ADMIN);
         init_before_test(&mut scenario);
         scenario.next_tx(ADMIN);
@@ -113,11 +111,8 @@ module moonbags::moonbags_test {
             let mut stake_config = scenario.take_shared<StakeConfig>();
             let clock = clock::create_for_testing(scenario.ctx());
 
-            let mut option_cetus_pool = option::none<CetusPool<TestToken, SUI>>();
-
-            let (admin, cetus_config) = cetus_clmm::config::new_global_config_for_test(scenario.ctx(), 2000);
-
-            moonbags::withdraw_fee<TestToken, SHRO>(&mut bonding_config, &mut stake_config, &cetus_config, &mut option_cetus_pool, &clock, scenario.ctx());
+            // Call the bonding curve withdraw fee function
+            moonbags::withdraw_fee_bonding_curve<TestToken, SHRO>(&mut bonding_config, &mut stake_config, &clock, scenario.ctx());
 
             let (_, creator_fee_withdraw, stake_fee_withdraw, platform_stake_fee_withdraw) = moonbags::get_config_value_for_testing(&bonding_config);
 
@@ -132,11 +127,6 @@ module moonbags::moonbags_test {
             let staking_pool = get_creator_pool<TestToken>(&stake_config);
             let sui_reward_value = moonbags_stake::get_creator_pool_reward_value_for_testing(staking_pool);
             assert!(sui_reward_value == RECIPIENT_FEE * (creator_fee_withdraw as u64) / 10_000, EOutputNotEqualToExpected);
-
-            option::destroy_none(option_cetus_pool);
-
-            transfer::public_transfer(admin, ADMIN);
-            transfer::public_transfer(cetus_config, ADMIN);
 
             test_scenario::return_shared(bonding_config);
             test_scenario::return_shared(stake_config);

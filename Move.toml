@@ -5,6 +5,7 @@ edition = "2024.beta"
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
 CetusClmm = { local = "./externals/cetus_clmm" }
+LpBurn = { local = "./externals/lp_burn" }
 
 [addresses]
 moonbags = "0x0"
