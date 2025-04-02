@@ -18,8 +18,13 @@ module move_stl::linked_table {
         value: V
     }
 
-    public fun new<K: store + drop + copy, V: store>(ctx: &mut TxContext): LinkedTable<K, V> {
-        abort(0)
+    public fun new<K: store + drop + copy, V: store>(ctx: &mut TxContext): LinkedTable<K, V> { // update for testing
+        LinkedTable {
+            id: object::new(ctx),
+            head: none(),
+            tail: none(),
+            size: 0
+        }
     }
 
     public fun is_empty<K: store + drop + copy, V: store>(table: &LinkedTable<K, V>): bool {
