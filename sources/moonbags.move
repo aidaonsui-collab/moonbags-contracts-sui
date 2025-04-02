@@ -347,7 +347,7 @@ module moonbags::moonbags {
         };
     }
 
-    public entry fun buy_exact_in<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
+    public entry fun buy_exact_in<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out_min: u64, cetus_burn_manager: &mut BurnManager ,cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) {
         assert_version(configuration.version);
         let amount_sui_in = coin::value<SUI>(&coin_sui);
 
@@ -366,8 +366,10 @@ module moonbags::moonbags {
 
         let amount_out_swap = curves::calculate_remove_liquidity_return(pool.virtual_sui_reserves, pool.virtual_token_reserves, amount_in_swap) - 1;
         let actual_token_amount_out = min(amount_out_swap, token_reserves_in_pool);
+
+        assert!(actual_token_amount_out >= amount_out_min, EInvalidInput);
+
         let actual_sui_amount_in = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_token_amount_out) + 1;
-        assert!(amount_sui_in >= amount_in_swap + fee, EInsufficientInput);
 
         let sui_amount_remain = amount_in_swap - actual_sui_amount_in;
 
@@ -395,7 +397,7 @@ module moonbags::moonbags {
         emit<TradedEvent>(traded_event);
 
         if (actual_token_amount_out == token_reserves_in_pool) {
-            transfer_pool<Token>(configuration.admin, configuration.graduated_fee ,pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
+            transfer_pool<Token>(configuration.admin, configuration.graduated_fee , pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
     }
 
@@ -484,7 +486,7 @@ module moonbags::moonbags {
         (coin_sui_out, coin_token_out)
     }
 
-    public fun buy_exact_in_returns<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
+    public fun buy_exact_in_returns<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out_min: u64, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, metadata_token: &CoinMetadata<Token>, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
         assert_version(configuration.version);
         let amount_sui_in = coin::value<SUI>(&coin_sui);
 
@@ -501,19 +503,25 @@ module moonbags::moonbags {
         assert!(amount_sui_in > 0, EInvalidInput);
         let token_reserves_in_pool = pool.virtual_token_reserves - coin::value<Token>(&pool.remain_token_reserves);
 
-        let amount_out_swap = curves::calculate_remove_liquidity_return(pool.virtual_sui_reserves, pool.virtual_token_reserves, amount_in_swap);
-        let actual_amount_out = min(amount_out_swap, token_reserves_in_pool);
-        let actual_amount_in = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
-        assert!(amount_sui_in >= amount_in_swap + fee, EInsufficientInput);
+        let amount_out_swap = curves::calculate_remove_liquidity_return(pool.virtual_sui_reserves, pool.virtual_token_reserves, amount_in_swap) - 1;
+        let actual_token_amount_out = min(amount_out_swap, token_reserves_in_pool);
 
-        let (coin_token_out, coin_sui_out) = swap<Token>(pool, coin::zero<Token>(ctx), coin_sui, actual_amount_out, amount_sui_in - actual_amount_in - fee, ctx);
+        assert!(actual_token_amount_out >= amount_out_min, EInvalidInput);
+
+        let actual_sui_amount_in = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_token_amount_out) + 1;
+
+        let sui_amount_remain = amount_in_swap - actual_sui_amount_in;
+
+        let (coin_token_out, coin_sui_out) = swap<Token>(pool, coin::zero<Token>(ctx), coin_sui, actual_token_amount_out, sui_amount_remain, ctx);
+
+        pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
 
         let traded_event = TradedEvent{
             is_buy                 : true,
             user                   : ctx.sender(),
             token_address          : type_name::into_string(token_address),
-            sui_amount             : actual_amount_in,
-            token_amount           : actual_amount_out,
+            sui_amount             : actual_sui_amount_in,
+            token_amount           : actual_token_amount_out,
             virtual_sui_reserves   : pool.virtual_sui_reserves,
             virtual_token_reserves : pool.virtual_token_reserves,
             real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
@@ -524,8 +532,8 @@ module moonbags::moonbags {
         };
         emit<TradedEvent>(traded_event);
 
-        if (actual_amount_out == token_reserves_in_pool) {
-            transfer_pool<Token>(configuration.admin, configuration.graduated_fee, pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
+        if (actual_token_amount_out == token_reserves_in_pool) {
+            transfer_pool<Token>(configuration.admin, configuration.graduated_fee , pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, metadata_token, clock, ctx);
         };
         (coin_sui_out, coin_token_out)
     }
