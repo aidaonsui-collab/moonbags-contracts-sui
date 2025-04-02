@@ -66,12 +66,12 @@ flavor = "sui"
 
 [env.mainnet]
 chain-id = "35834a8a"
-original-published-id = "0xa840ff9762b190a2044e16b2fbf8243e33af6417d9f9947c581d1b327c7579c9"
-latest-published-id = "0xa840ff9762b190a2044e16b2fbf8243e33af6417d9f9947c581d1b327c7579c9"
+original-published-id = "0xb78138f9193c962b40e752bca7e344071683ae4920b3ac6e6ee7d2826b1c367c"
+latest-published-id = "0xb78138f9193c962b40e752bca7e344071683ae4920b3ac6e6ee7d2826b1c367c"
 published-version = "1"
 
 [env.testnet]
 chain-id = "4c78adac"
-original-published-id = "0x560d38b1c6509e3e7e5081af48a7789d2cf94709f83c48fdcdc93e5299bda59e"
-latest-published-id = "0x560d38b1c6509e3e7e5081af48a7789d2cf94709f83c48fdcdc93e5299bda59e"
+original-published-id = "0xaedfc0c47540daeb09f86688b9f19239854dba5fd3ed9f83f7babdda822099e7"
+latest-published-id = "0xaedfc0c47540daeb09f86688b9f19239854dba5fd3ed9f83f7babdda822099e7"
 published-version = "1"
