@@ -2,10 +2,11 @@
 
 [move]
 version = 3
-manifest_digest = "9FD8B32DF9864E348E1696470A9FA145A08C32CFEAB85EFD67A89058C364CE12"
-deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
+manifest_digest = "1C2EB4548F5F97485F64C54B61715FE34A06B1912DD47F3A65C67A0EC4DECAC5"
+deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
 dependencies = [
   { id = "CetusClmm", name = "CetusClmm" },
+  { id = "LpBurn", name = "LpBurn" },
   { id = "Sui", name = "Sui" },
 ]
 
@@ -24,6 +25,15 @@ id = "IntegerMate"
 source = { local = "externals/integer-mate" }
 
 dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "LpBurn"
+source = { local = "externals/lp_burn" }
+
+dependencies = [
+  { id = "CetusClmm", name = "CetusClmm" },
   { id = "Sui", name = "Sui" },
 ]
 
@@ -58,4 +68,10 @@ flavor = "sui"
 chain-id = "35834a8a"
 original-published-id = "0xca3a408f3df96808db8f0054c9912ebfcd5201333965f7ce278b27cb660f8834"
 latest-published-id = "0xca3a408f3df96808db8f0054c9912ebfcd5201333965f7ce278b27cb660f8834"
+published-version = "1"
+
+[env.testnet]
+chain-id = "4c78adac"
+original-published-id = "0x0a82b39a5d1f85d351e1512fdce7e37088222bffa6982be13b314bd0c644dc8a"
+latest-published-id = "0x0a82b39a5d1f85d351e1512fdce7e37088222bffa6982be13b314bd0c644dc8a"
 published-version = "1"
