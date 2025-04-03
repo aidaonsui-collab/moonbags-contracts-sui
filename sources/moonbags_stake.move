@@ -105,6 +105,7 @@ module moonbags::moonbags_stake {
         reward_updater: String,
         reward: u64,
         timestamp: u64,
+        is_initial_rewards: bool,
     }
 
     public struct DepositPoolCreatorEvent has copy, drop, store {
@@ -251,6 +252,15 @@ module moonbags::moonbags_stake {
         if (staking_pool.total_supply == 0) {
             staking_pool.pending_initial_rewards = staking_pool.pending_initial_rewards + reward_amount;
             coin::join(&mut staking_pool.sui_token, reward_sui_coin);
+
+            emit<UpdateRewardIndexEvent>(UpdateRewardIndexEvent {
+                token_address       : type_name::into_string(type_name::get<StakingToken>()),
+                staking_pool        : object::id(staking_pool),
+                reward_updater      : ctx.sender().to_ascii_string(),
+                reward              : reward_amount,
+                timestamp           : clock::timestamp_ms(clock),
+                is_initial_rewards  : true,
+            });
             return
         };
 
@@ -263,7 +273,8 @@ module moonbags::moonbags_stake {
             staking_pool        : object::id(staking_pool),
             reward_updater      : ctx.sender().to_ascii_string(),
             reward              : reward_amount,
-            timestamp           : clock::timestamp_ms(clock)
+            timestamp           : clock::timestamp_ms(clock),
+            is_initial_rewards  : false,
         };
         emit<UpdateRewardIndexEvent>(update_reward_index_event);
     }
