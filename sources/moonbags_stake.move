@@ -23,7 +23,7 @@ module moonbags::moonbags_stake {
     const EWrongVersion: u64 = 10;
 
     // === Constants ===
-    const MULTIPLIER: u128 = 1_000_000_000; // 1e9
+    const MULTIPLIER: u128 = 10_000_000_000_000_000; // 1e16
     const VERSION: u64 = 1;
 
     // === Structs ===
@@ -574,7 +574,14 @@ module moonbags::moonbags_stake {
      */
     fun calculate_rewards(staking_pool_reward_index: u128, staking_account: &StakingAccount): u64 {
         let shares = staking_account.balance as u128;
-        ((shares * (staking_pool_reward_index - staking_account.reward_index)) / MULTIPLIER) as u64
+        let reward_u128 = ((shares * (staking_pool_reward_index - staking_account.reward_index)) / MULTIPLIER);
+
+        let reward_option = std::u128::try_as_u64(reward_u128);
+        if (option::is_some(&reward_option)) {
+            option::destroy_some(reward_option)
+        } else {
+            std::u64::max_value!()
+        }
     }
 
     /*
