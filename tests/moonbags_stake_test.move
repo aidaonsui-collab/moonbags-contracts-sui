@@ -272,8 +272,7 @@ module moonbags::staking_test {
             assert!(staking_value == 10_000, EOutputEqualToExpected);
             assert!(sui_value == 500, EOutputEqualToExpected);
             assert!(total_supply == 10_000, EOutputEqualToExpected);
-            // reward_index = (500 * 1_000_000_000) / 10_000 = 50_000_000
-            assert!(reward_index == 50_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 500_000_000_000_000, EOutputEqualToExpected);
             
             // Add second reward
             let reward_amount_2 = 800;
@@ -290,7 +289,7 @@ module moonbags::staking_test {
             assert!(total_supply == 10_000, EOutputEqualToExpected);
             // Additional reward_index = (800 * 1_000_000_000) / 10_000 = 80_000_000
             // Total reward_index = 50_000_000 + 80_000_000 = 130_000_000
-            assert!(reward_index == 130_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 1_300_000_000_000_000, EOutputEqualToExpected);
             
             test_scenario::return_shared(config);
             clock::destroy_for_testing(clock);
@@ -1590,8 +1589,7 @@ module moonbags::staking_test {
             let (_, staking_token_value, sui_token_value, total_supply, reward_index, pending_rewards) = 
                 moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
-            // Reward index should be updated: (reward_amount * MULTIPLIER) / total_supply
-            assert!(reward_index == 100_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 1_000_000_000_000_000, EOutputEqualToExpected);
             assert!(sui_token_value == 1_500, EOutputEqualToExpected); // 500 + 1000
             assert!(staking_token_value == 10_000, EOutputEqualToExpected);
             assert!(total_supply == 10_000, EOutputEqualToExpected);
@@ -1620,14 +1618,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
             assert!(sui_token_value == 1_500, EOutputEqualToExpected);
             assert!(total_supply == 25_000, EOutputEqualToExpected);
-            assert!(reward_index == 100_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 1_000_000_000_000_000, EOutputEqualToExpected);
 
             // Check user2 account
             let staking_account = get_staking_account(pool_id, USER_2);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
 
             assert!(balance == 15_000, EOutputEqualToExpected);
-            assert!(acc_reward_index == 100_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 1_000_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 0, EOutputEqualToExpected);
 
             let user2_reward_earned = moonbags_stake::calculate_rewards_earned<StakingToken>(&config, scenario.ctx());
@@ -1652,9 +1650,7 @@ module moonbags::staking_test {
             let (_, staking_token_value, sui_token_value, total_supply, reward_index, _) = 
                 moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
-            // New reward index increment: (1000 * 10^9) / 25000 = 40_000_000
-            // Total reward index: 100_000_000 + 40_000_000 = 140_000_000
-            assert!(reward_index == 140_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 1_400_000_000_000_000, EOutputEqualToExpected);
             assert!(sui_token_value == 2_500, EOutputEqualToExpected); // 1500 + 1000
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
             assert!(total_supply == 25_000, EOutputEqualToExpected);
@@ -1685,14 +1681,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
             assert!(sui_token_value == 600, EOutputEqualToExpected); // 2500 - 1900
             assert!(total_supply == 25_000, EOutputEqualToExpected);
-            assert!(reward_index == 140_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 1_400_000_000_000_000, EOutputEqualToExpected);
 
             // Verify user's staking account
             let staking_account = get_staking_account(pool_id, USER_1);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
             
             assert!(balance == 10_000, EOutputEqualToExpected);
-            assert!(acc_reward_index == 140_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 1_400_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 0, EOutputEqualToExpected); // Earned should be 0 after claiming
 
             test_scenario::return_shared(config);
@@ -1714,9 +1710,7 @@ module moonbags::staking_test {
             let (_, staking_token_value, sui_token_value, total_supply, reward_index, _) = 
                 moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
-            // Additional reward index: (1000 * 10^9) / 25000 = 40_000_000
-            // Total: 140_000_000 + 40_000_000 = 180_000_000
-            assert!(reward_index == 180_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 1_800_000_000_000_000, EOutputEqualToExpected);
             assert!(sui_token_value == 1_600, EOutputEqualToExpected); // 600 + 1000
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
             assert!(total_supply == 25_000, EOutputEqualToExpected);
@@ -1741,14 +1735,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 20_000, EOutputEqualToExpected); // 25000 - 5000
             assert!(sui_token_value == 1_600, EOutputEqualToExpected);
             assert!(total_supply == 20_000, EOutputEqualToExpected); // 25000 - 5000
-            assert!(reward_index == 180_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 1_800_000_000_000_000, EOutputEqualToExpected);
 
             // Verify user's staking account after unstake
             let staking_account = get_staking_account(pool_id, USER_1);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
 
             assert!(balance == 5_000, EOutputEqualToExpected); // 10000 - 5000
-            assert!(acc_reward_index == 180_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 1_800_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 400, EOutputEqualToExpected); // (180_000_000 - 140_000_000) * 10000 / 10^9 = 400
 
             test_scenario::return_shared(config);
@@ -1778,14 +1772,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 20_000, EOutputEqualToExpected);
             assert!(sui_token_value == 400, EOutputEqualToExpected); // 1600 - 1200
             assert!(total_supply == 20_000, EOutputEqualToExpected);
-            assert!(reward_index == 180_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 1_800_000_000_000_000, EOutputEqualToExpected);
 
             // Verify user's staking account
             let staking_account = get_staking_account(pool_id, USER_2);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
             
             assert!(balance == 15_000, EOutputEqualToExpected);
-            assert!(acc_reward_index == 180_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 1_800_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 0, EOutputEqualToExpected); // Earned should be 0 after claiming
 
             test_scenario::return_shared(config);
@@ -1811,14 +1805,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 25_000, EOutputEqualToExpected); // 20000 + 5000
             assert!(sui_token_value == 400, EOutputEqualToExpected);
             assert!(total_supply == 25_000, EOutputEqualToExpected); // 20000 + 5000
-            assert!(reward_index == 180_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 1_800_000_000_000_000, EOutputEqualToExpected);
 
             // Check USER_3's staking account
             let staking_account = get_staking_account(pool_id, USER_1);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
 
             assert!(balance == 10_000, EOutputEqualToExpected); // 5000 (existing) + 5000 (new stake)
-            assert!(acc_reward_index == 180_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 1_800_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 400, EOutputEqualToExpected); // Existing earned rewards preserved
 
             test_scenario::return_shared(config);
@@ -1840,9 +1834,7 @@ module moonbags::staking_test {
             let (_, staking_token_value, sui_token_value, total_supply, reward_index, _) = 
                 moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
 
-            // Additional reward index: (2000 * 10^9) / 25000 = 80_000_000
-            // Total: 180_000_000 + 80_000_000 = 260_000_000
-            assert!(reward_index == 260_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 2_600_000_000_000_000, EOutputEqualToExpected);
             assert!(sui_token_value == 2_400, EOutputEqualToExpected); // 400 + 2000
             assert!(staking_token_value == 25_000, EOutputEqualToExpected);
             assert!(total_supply == 25_000, EOutputEqualToExpected);
@@ -1869,14 +1861,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 15_000, EOutputEqualToExpected); // 25000 - 10000
             assert!(sui_token_value == 2_400, EOutputEqualToExpected);
             assert!(total_supply == 15_000, EOutputEqualToExpected); // 25000 - 10000
-            assert!(reward_index == 260_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 2_600_000_000_000_000, EOutputEqualToExpected);
 
             // Verify user's staking account exists with rewards but no balance
             let staking_account = get_staking_account(pool_id, USER_1);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
 
             assert!(balance == 0, EOutputEqualToExpected); // Fully unstaked
-            assert!(acc_reward_index == 260_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 2_600_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 1200, EOutputEqualToExpected); // 400 (previous) + 10000 * (260_000_000 - 180_000_000) / 10^9 = 800
 
             // User still has earned rewards, so account should still exist
@@ -1905,14 +1897,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 18_000, EOutputEqualToExpected); // 15000 + 3000
             assert!(sui_token_value == 2_400, EOutputEqualToExpected);
             assert!(total_supply == 18_000, EOutputEqualToExpected); // 15000 + 3000
-            assert!(reward_index == 260_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 2_600_000_000_000_000, EOutputEqualToExpected);
 
             // Verify user's staking account after staking again
             let staking_account = get_staking_account(pool_id, USER_1);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
 
             assert!(balance == 3_000, EOutputEqualToExpected); // New stake amount
-            assert!(acc_reward_index == 260_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 2_600_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 1200, EOutputEqualToExpected); // Previous rewards preserved
 
             test_scenario::return_shared(config);
@@ -1974,14 +1966,14 @@ module moonbags::staking_test {
             assert!(staking_token_value == 18_000, EOutputEqualToExpected);
             assert!(sui_token_value == 1_200, EOutputEqualToExpected); // 2400 - 1200
             assert!(total_supply == 18_000, EOutputEqualToExpected);
-            assert!(reward_index == 260_000_000, EOutputEqualToExpected);
+            assert!(reward_index == 2_600_000_000_000_000, EOutputEqualToExpected);
 
             // Verify user's staking account
             let staking_account = get_staking_account(pool_id, USER_1);
             let (balance, acc_reward_index, earned) = moonbags_stake::get_staking_account_values_for_testing(staking_account);
             
             assert!(balance == 3_000, EOutputEqualToExpected);
-            assert!(acc_reward_index == 260_000_000, EOutputEqualToExpected);
+            assert!(acc_reward_index == 2_600_000_000_000_000, EOutputEqualToExpected);
             assert!(earned == 0, EOutputEqualToExpected); // Earned should be 0 after claiming
 
             test_scenario::return_shared(config);
