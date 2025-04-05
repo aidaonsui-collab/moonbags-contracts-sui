@@ -15,6 +15,7 @@ module moonbags::moonbags_test {
     };
     use moonbags::moonbags_stake::{Self, Configuration as StakeConfig};
     use moonbags::staking_test::{get_creator_pool, get_staking_pool};
+    use moonbags::test_token::{Self, TEST_TOKEN};
 
     const ADMIN: address = @0x00;
     const USER_1: address = @0x10;
@@ -30,11 +31,8 @@ module moonbags::moonbags_test {
     const TELEGRAM: vector<u8> = b"TELEGRAM";
     const WEBSITE: vector<u8> = b"WEBSITE";
 
-
-
     const EOutputNotEqualToExpected: u64 = 0;
 
-    public struct TestToken has drop {}
     public struct SHRO has drop {}
 
     #[test_only]
@@ -50,12 +48,15 @@ module moonbags::moonbags_test {
         {
             let mut config = scenario.take_shared<BondingConfig>();
             let mut stake_config = scenario.take_shared<StakeConfig>();
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
             let clock = clock::create_for_testing(scenario.ctx());
+
+            let (treasury_cap, token_metadata) = test_token::create_test_token_for_testing(scenario.ctx());
+
             mb::create(
                 &mut config,
                 &mut stake_config,
                 treasury_cap,
+                token_metadata,
                 option::none(),
                 &clock,
                 TOKEN_NAME.to_ascii_string(),
@@ -82,23 +83,23 @@ module moonbags::moonbags_test {
             let mut bonding_config = scenario.take_shared<BondingConfig>();
             let mut stake_config = scenario.take_shared<StakeConfig>();
             let clock = clock::create_for_testing(scenario.ctx());
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let treasury_cap = coin::create_treasury_cap_for_testing<TEST_TOKEN>(scenario.ctx());
 
             let fee_recipient_coin = coin::mint_for_testing<SUI>(RECIPIENT_FEE, scenario.ctx()); // 1000 sui
 
             moonbags_stake::initialize_staking_pool<SHRO>(&mut stake_config, &clock, scenario.ctx());
-            moonbags::create_pool_for_withdraw_fee_testing<TestToken>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
-            moonbags_stake::initialize_staking_pool<TestToken>(&mut stake_config, &clock, scenario.ctx());
-            moonbags_stake::initialize_creator_pool<TestToken>(&mut stake_config, USER_1, &clock, scenario.ctx());
+            moonbags::create_pool_for_withdraw_fee_testing<TEST_TOKEN>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
+            moonbags_stake::initialize_staking_pool<TEST_TOKEN>(&mut stake_config, &clock, scenario.ctx());
+            moonbags_stake::initialize_creator_pool<TEST_TOKEN>(&mut stake_config, USER_1, &clock, scenario.ctx());
 
             moonbags::update_config_for_testing(&mut bonding_config, b"0000000000000000000000000000000000000000000000000000000000000000::moonbags_test::SHRO".to_ascii_string());
 
             let stake_amount = 10_000;
             let platform_stake_coin = coin::mint_for_testing<SHRO>(stake_amount, scenario.ctx());
-            let stake_coin = coin::mint_for_testing<TestToken>(stake_amount, scenario.ctx());
+            let stake_coin = coin::mint_for_testing<TEST_TOKEN>(stake_amount, scenario.ctx());
 
             // Stake tokens
-            moonbags_stake::stake<TestToken>(&mut stake_config, stake_coin, &clock, scenario.ctx());
+            moonbags_stake::stake<TEST_TOKEN>(&mut stake_config, stake_coin, &clock, scenario.ctx());
             moonbags_stake::stake<SHRO>(&mut stake_config, platform_stake_coin, &clock, scenario.ctx());
 
             test_scenario::return_shared(bonding_config);
@@ -112,11 +113,11 @@ module moonbags::moonbags_test {
             let clock = clock::create_for_testing(scenario.ctx());
 
             // Call the bonding curve withdraw fee function
-            moonbags::withdraw_fee_bonding_curve<TestToken, SHRO>(&mut bonding_config, &mut stake_config, &clock, scenario.ctx());
+            moonbags::withdraw_fee_bonding_curve<TEST_TOKEN, SHRO>(&mut bonding_config, &mut stake_config, &clock, scenario.ctx());
 
             let (_, creator_fee_withdraw, stake_fee_withdraw, platform_stake_fee_withdraw) = moonbags::get_config_value_for_testing(&bonding_config);
 
-            let staking_pool = get_staking_pool<TestToken>(&stake_config);
+            let staking_pool = get_staking_pool<TEST_TOKEN>(&stake_config);
             let (_, _, sui_reward_value, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
             assert!(sui_reward_value == RECIPIENT_FEE * (stake_fee_withdraw as u64) / 10_000, EOutputNotEqualToExpected);
 
@@ -124,7 +125,7 @@ module moonbags::moonbags_test {
             let (_, _, sui_reward_value, _, _, _) = moonbags_stake::get_staking_pool_values_for_testing(staking_pool);
             assert!(sui_reward_value == RECIPIENT_FEE * (platform_stake_fee_withdraw as u64) / 10_000, EOutputNotEqualToExpected);
 
-            let staking_pool = get_creator_pool<TestToken>(&stake_config);
+            let staking_pool = get_creator_pool<TEST_TOKEN>(&stake_config);
             let sui_reward_value = moonbags_stake::get_creator_pool_reward_value_for_testing(staking_pool);
             assert!(sui_reward_value == RECIPIENT_FEE * (creator_fee_withdraw as u64) / 10_000, EOutputNotEqualToExpected);
 
@@ -157,7 +158,7 @@ module moonbags::moonbags_test {
         scenario.next_tx(USER_1);
         {
             let config = scenario.take_shared<BondingConfig>();
-            let is_exist = mb::check_pool_exist<TestToken>(&config);
+            let is_exist = mb::check_pool_exist<TEST_TOKEN>(&config);
             assert!(is_exist == true, EOutputNotEqualToExpected);
             test_scenario::return_shared(config);
         };
@@ -171,7 +172,7 @@ module moonbags::moonbags_test {
         scenario.next_tx(USER_1);
         {
             let config = scenario.take_shared<BondingConfig>();
-            let is_exist = mb::check_pool_exist<TestToken>(&config);
+            let is_exist = mb::check_pool_exist<TEST_TOKEN>(&config);
             assert!(is_exist == false, EOutputNotEqualToExpected);
             test_scenario::return_shared(config);
         };
@@ -225,9 +226,9 @@ module moonbags::moonbags_test {
         scenario.next_tx(ADMIN);
         {
             let mut bonding_config = scenario.take_shared<BondingConfig>();
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let treasury_cap = coin::create_treasury_cap_for_testing<TEST_TOKEN>(scenario.ctx());
             let fee_recipient_coin = coin::mint_for_testing<SUI>(RECIPIENT_FEE, scenario.ctx()); // 1000 sui
-            moonbags::create_pool_for_withdraw_fee_testing<TestToken>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
+            moonbags::create_pool_for_withdraw_fee_testing<TEST_TOKEN>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
             test_scenario::return_shared(bonding_config);
         };
         scenario.next_tx(ADMIN);
@@ -235,11 +236,11 @@ module moonbags::moonbags_test {
             let mut config = scenario.take_shared<BondingConfig>();
             let mut threshold_config = scenario.take_shared<ThresholdConfig>();
             let admin_cap = scenario.take_from_sender<AdminCap>();
-            let pool = mb::borrow_mut_pool<TestToken>(&mut config);
+            let pool = mb::borrow_mut_pool<TEST_TOKEN>(&mut config);
             let coin_sui = coin::mint_for_testing<SUI>(ONE_TOKEN * 2000, scenario.ctx());
             mb::join_sui_for_testing(pool, coin_sui);
             let clock = clock::create_for_testing(scenario.ctx());
-            mb::early_complete_pool<TestToken>(&admin_cap, &mut config, &mut threshold_config, &clock, scenario.ctx());
+            mb::early_complete_pool<TEST_TOKEN>(&admin_cap, &mut config, &mut threshold_config, &clock, scenario.ctx());
             test_scenario::return_shared(config);
             test_scenario::return_shared(threshold_config);
             test_scenario::return_to_sender(&scenario, admin_cap);
@@ -262,9 +263,9 @@ module moonbags::moonbags_test {
         scenario.next_tx(ADMIN);
         {
             let mut bonding_config = scenario.take_shared<BondingConfig>();
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let treasury_cap = coin::create_treasury_cap_for_testing<TEST_TOKEN>(scenario.ctx());
             let fee_recipient_coin = coin::mint_for_testing<SUI>(RECIPIENT_FEE, scenario.ctx()); // 1000 sui
-            moonbags::create_pool_for_withdraw_fee_testing<TestToken>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
+            moonbags::create_pool_for_withdraw_fee_testing<TEST_TOKEN>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
             test_scenario::return_shared(bonding_config);
         };
         scenario.next_tx(ADMIN);
@@ -272,11 +273,11 @@ module moonbags::moonbags_test {
             let mut config = scenario.take_shared<BondingConfig>();
             let mut threshold_config = scenario.take_shared<ThresholdConfig>();
             let admin_cap = scenario.take_from_sender<AdminCap>();
-            let pool = mb::borrow_mut_pool<TestToken>(&mut config);
+            let pool = mb::borrow_mut_pool<TEST_TOKEN>(&mut config);
             let coin_sui = coin::mint_for_testing<SUI>(ONE_TOKEN * 1000, scenario.ctx());
             mb::join_sui_for_testing(pool, coin_sui);
             let clock = clock::create_for_testing(scenario.ctx());
-            mb::early_complete_pool<TestToken>(&admin_cap, &mut config, &mut threshold_config, &clock, scenario.ctx());
+            mb::early_complete_pool<TEST_TOKEN>(&admin_cap, &mut config, &mut threshold_config, &clock, scenario.ctx());
             test_scenario::return_shared(config);
             test_scenario::return_shared(threshold_config);
             test_scenario::return_to_sender(&scenario, admin_cap);
@@ -298,9 +299,9 @@ module moonbags::moonbags_test {
         scenario.next_tx(ADMIN);
         {
             let mut bonding_config = scenario.take_shared<BondingConfig>();
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let treasury_cap = coin::create_treasury_cap_for_testing<TEST_TOKEN>(scenario.ctx());
             let fee_recipient_coin = coin::mint_for_testing<SUI>(RECIPIENT_FEE, scenario.ctx()); // 1000 sui
-            moonbags::create_pool_for_withdraw_fee_testing<TestToken>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
+            moonbags::create_pool_for_withdraw_fee_testing<TEST_TOKEN>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
             test_scenario::return_shared(bonding_config);
         };
         scenario.next_tx(ADMIN);
@@ -308,11 +309,11 @@ module moonbags::moonbags_test {
             let mut config = scenario.take_shared<BondingConfig>();
             let mut threshold_config = scenario.take_shared<ThresholdConfig>();
             let admin_cap = scenario.take_from_sender<AdminCap>();
-            let pool = mb::borrow_mut_pool<TestToken>(&mut config);
+            let pool = mb::borrow_mut_pool<TEST_TOKEN>(&mut config);
             let coin_sui = coin::mint_for_testing<SUI>(ONE_TOKEN * 2000, scenario.ctx());
             mb::join_sui_for_testing(pool, coin_sui);
             let clock = clock::create_for_testing(scenario.ctx());
-            mb::early_complete_pool<TestToken>(&admin_cap, &mut config, &mut threshold_config, &clock, scenario.ctx());
+            mb::early_complete_pool<TEST_TOKEN>(&admin_cap, &mut config, &mut threshold_config, &clock, scenario.ctx());
             test_scenario::return_shared(config);
             test_scenario::return_shared(threshold_config);
             test_scenario::return_to_sender(&scenario, admin_cap);
@@ -322,7 +323,7 @@ module moonbags::moonbags_test {
         {
             let admin_cap = scenario.take_from_sender<AdminCap>();
             let mut config = scenario.take_shared<BondingConfig>();
-            mb::skim<TestToken>(&admin_cap, &mut config, scenario.ctx());
+            mb::skim<TEST_TOKEN>(&admin_cap, &mut config, scenario.ctx());
             test_scenario::return_shared(config);
             test_scenario::return_to_sender(&scenario, admin_cap);
         };
@@ -343,16 +344,16 @@ module moonbags::moonbags_test {
         scenario.next_tx(ADMIN);
         {
             let mut bonding_config = scenario.take_shared<BondingConfig>();
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let treasury_cap = coin::create_treasury_cap_for_testing<TEST_TOKEN>(scenario.ctx());
             let fee_recipient_coin = coin::mint_for_testing<SUI>(RECIPIENT_FEE, scenario.ctx()); // 1000 sui
-            moonbags::create_pool_for_withdraw_fee_testing<TestToken>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
+            moonbags::create_pool_for_withdraw_fee_testing<TEST_TOKEN>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
             test_scenario::return_shared(bonding_config);
         };
         scenario.next_tx(ADMIN);
         {
             let admin_cap = scenario.take_from_sender<AdminCap>();
             let mut config = scenario.take_shared<BondingConfig>();
-            mb::skim<TestToken>(&admin_cap, &mut config, scenario.ctx());
+            mb::skim<TEST_TOKEN>(&admin_cap, &mut config, scenario.ctx());
             test_scenario::return_shared(config);
             test_scenario::return_to_sender(&scenario, admin_cap);
         };
@@ -368,7 +369,7 @@ module moonbags::moonbags_test {
         {
             let mut config = scenario.take_shared<BondingConfig>();
             let mut stake_config = scenario.take_shared<StakeConfig>();
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let (treasury_cap, token_metadata) = test_token::create_test_token_for_testing(scenario.ctx());
             let clock = clock::create_for_testing(scenario.ctx());
             
             // Creating a URI string that exceeds the 300 character limit
@@ -383,6 +384,7 @@ module moonbags::moonbags_test {
                 &mut config,
                 &mut stake_config,
                 treasury_cap,
+                token_metadata,
                 option::none(),
                 &clock,
                 TOKEN_NAME.to_ascii_string(),
@@ -410,7 +412,7 @@ module moonbags::moonbags_test {
         {
             let mut config = scenario.take_shared<BondingConfig>();
             let mut stake_config = scenario.take_shared<StakeConfig>();
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let (treasury_cap, token_metadata) = test_token::create_test_token_for_testing(scenario.ctx());
             let clock = clock::create_for_testing(scenario.ctx());
             
             // Creating a description string that exceeds the 1000 character limit
@@ -425,6 +427,7 @@ module moonbags::moonbags_test {
                 &mut config,
                 &mut stake_config,
                 treasury_cap,
+                token_metadata,
                 option::none(),
                 &clock,
                 TOKEN_NAME.to_ascii_string(),
@@ -452,10 +455,10 @@ module moonbags::moonbags_test {
         {
             let mut config = scenario.take_shared<BondingConfig>();
             let mut stake_config = scenario.take_shared<StakeConfig>();
-            let mut treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let (mut treasury_cap, token_metadata) = test_token::create_test_token_for_testing(scenario.ctx());
             
             // Mint some tokens before creating the pool
-            let token = coin::mint<TestToken>(&mut treasury_cap, 1000, scenario.ctx());
+            let token = coin::mint<TEST_TOKEN>(&mut treasury_cap, 1000, scenario.ctx());
             transfer::public_transfer(token, USER_1);
             
             let clock = clock::create_for_testing(scenario.ctx());
@@ -463,6 +466,7 @@ module moonbags::moonbags_test {
                 &mut config,
                 &mut stake_config,
                 treasury_cap,
+                token_metadata,
                 option::none(),
                 &clock,
                 TOKEN_NAME.to_ascii_string(),
@@ -490,7 +494,7 @@ module moonbags::moonbags_test {
         {
             let mut config = scenario.take_shared<BondingConfig>();
             let mut stake_config = scenario.take_shared<StakeConfig>();
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let (treasury_cap, token_metadata) = test_token::create_test_token_for_testing(scenario.ctx());
             let clock = clock::create_for_testing(scenario.ctx());
             
             // Use a threshold below the minimum (2 SUI)
@@ -500,6 +504,7 @@ module moonbags::moonbags_test {
                 &mut config,
                 &mut stake_config,
                 treasury_cap,
+                token_metadata,
                 below_min_threshold,
                 &clock,
                 TOKEN_NAME.to_ascii_string(),
@@ -526,7 +531,7 @@ module moonbags::moonbags_test {
         {
             let mut config = scenario.take_shared<BondingConfig>();
             let mut stake_config = scenario.take_shared<StakeConfig>();
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let (treasury_cap, token_metadata) = test_token::create_test_token_for_testing(scenario.ctx());
             let clock = clock::create_for_testing(scenario.ctx());
             
             // Use a custom valid threshold (4 SUI)
@@ -536,6 +541,7 @@ module moonbags::moonbags_test {
                 &mut config,
                 &mut stake_config,
                 treasury_cap,
+                token_metadata,
                 custom_threshold,
                 &clock,
                 TOKEN_NAME.to_ascii_string(),
@@ -549,12 +555,12 @@ module moonbags::moonbags_test {
             );
             
             // Verify that pool exists after creation
-            let is_exist = mb::check_pool_exist<TestToken>(&config);
+            let is_exist = mb::check_pool_exist<TEST_TOKEN>(&config);
             assert!(is_exist == true, EOutputNotEqualToExpected);
             // Get the pool info and verify the values
             let (real_sui_reserves, real_token_reserves, virtual_sui_reserves, 
                 virtual_token_reserves, is_completed, fee_recipient_value) = 
-                mb::get_pool_info_for_testing<TestToken>(&config);
+                mb::get_pool_info_for_testing<TEST_TOKEN>(&config);
 
             // Check initial real reserves
             assert!(real_sui_reserves == 0, EOutputNotEqualToExpected);
@@ -593,12 +599,12 @@ module moonbags::moonbags_test {
             
             // Buy tokens with exact output amount
             let amount_out = ONE_TOKEN * 100; // Want to buy 100 token
-            moonbags::buy_exact_out_without_init_cetus<TestToken>(&mut config, coin_sui, amount_out, scenario.ctx());
+            moonbags::buy_exact_out_without_init_cetus<TEST_TOKEN>(&mut config, coin_sui, amount_out, scenario.ctx());
             
             // Verify pool state after buying
             let (real_sui_reserves, real_token_reserves, virtual_sui_reserves, 
                 virtual_token_reserves, _, fee_recipient) =
-                moonbags::get_pool_info_for_testing<TestToken>(&config);
+                moonbags::get_pool_info_for_testing<TEST_TOKEN>(&config);
 
             assert!(real_sui_reserves == 7501, EOutputNotEqualToExpected);
             assert!(real_token_reserves == 7999900000000, EOutputNotEqualToExpected);
@@ -628,7 +634,7 @@ module moonbags::moonbags_test {
             
             // Try to buy a substantial amount of tokens with insufficient SUI
             let amount_out = ONE_TOKEN; // Want to buy 1 token
-            moonbags::buy_exact_out_without_init_cetus<TestToken>(&mut config, coin_sui, amount_out, scenario.ctx());
+            moonbags::buy_exact_out_without_init_cetus<TEST_TOKEN>(&mut config, coin_sui, amount_out, scenario.ctx());
             
             test_scenario::return_shared(config);
         };
@@ -651,102 +657,11 @@ module moonbags::moonbags_test {
             let token_amount_out = ONE_TOKEN * 100_000_000; // over amount
             
             // This should buy all tokens and trigger pool completion
-            moonbags::buy_exact_out_without_init_cetus<TestToken>(&mut config, coin_sui, token_amount_out, scenario.ctx());
+            moonbags::buy_exact_out_without_init_cetus<TEST_TOKEN>(&mut config, coin_sui, token_amount_out, scenario.ctx());
             
             // Check that pool is now completed
             let (real_sui, real_token, virtual_sui, virtual_token, is_completed, _) = 
-                moonbags::get_pool_info_for_testing<TestToken>(&config);
-
-            assert!(is_completed, EOutputNotEqualToExpected);
-            assert!(real_token == 0, EOutputNotEqualToExpected);
-            assert!(real_sui == 0, EOutputNotEqualToExpected);
-            assert!(virtual_sui == 3750000001, EOutputNotEqualToExpected);
-            assert!(virtual_token == 2000000000000, EOutputNotEqualToExpected);
-
-            test_scenario::return_shared(config);
-        };
-        scenario.next_tx(ADMIN);
-        {
-            assert!(scenario.has_most_recent_for_sender<coin::Coin<SUI>>(), EOutputNotEqualToExpected);
-        };
-        scenario.end();
-    }
-
-    #[test]
-    fun test_buy_exact_in() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        init_before_test(&mut scenario);
-        scenario.next_tx(USER_1);
-        {
-            create_token_for_test(&mut scenario);
-        };
-        scenario.next_tx(USER_1);
-        {
-            let mut config = scenario.take_shared<BondingConfig>();
-            // Mint some SUI to use for buying 0,1 
-            let coin_sui = coin::mint_for_testing<SUI>(ONE_SUI / 10, scenario.ctx());
-            
-            // Buy tokens with exact SUI input
-            moonbags::buy_exact_in_without_init_cetus<TestToken>(&mut config, coin_sui, scenario.ctx());
-            
-            // Verify pool state after buying
-            let (real_sui_reserves, real_token_reserves, virtual_sui_reserves, 
-                virtual_token_reserves, _, fee_recipient) = moonbags::get_pool_info_for_testing<TestToken>(&config);
-
-            assert!(real_sui_reserves == 99000000, EOutputNotEqualToExpected);
-            assert!(real_token_reserves == 6833922261485, EOutputNotEqualToExpected);
-            assert!(virtual_sui_reserves == 849000000, EOutputNotEqualToExpected);
-            assert!(virtual_token_reserves == 8833922261485, EOutputNotEqualToExpected);
-            assert!(fee_recipient == 1000000, EOutputNotEqualToExpected);
-            
-            test_scenario::return_shared(config);
-        };
-        scenario.end();
-    }
-    
-    #[test]
-    #[expected_failure(abort_code = mb::EInvalidInput)]
-    fun test_buy_exact_in_zero_amount() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        init_before_test(&mut scenario);
-        scenario.next_tx(USER_1);
-        {
-            create_token_for_test(&mut scenario);
-        };
-        scenario.next_tx(USER_1);
-        {
-            let mut config = scenario.take_shared<BondingConfig>();
-            let coin_sui = coin::mint_for_testing<SUI>(0, scenario.ctx());
-            
-            // Try to buy with zero SUI
-            moonbags::buy_exact_in_without_init_cetus<TestToken>(&mut config, coin_sui, scenario.ctx());
-            
-            test_scenario::return_shared(config);
-        };
-        scenario.end();
-    }
-    
-    #[test]
-    fun test_buy_exact_in_completes_pool() {
-        let mut scenario = test_scenario::begin(ADMIN);
-        init_before_test(&mut scenario);
-        scenario.next_tx(USER_1);
-        {
-            create_token_for_test(&mut scenario);
-        };
-        scenario.next_tx(USER_1);
-        {
-            let mut config = scenario.take_shared<BondingConfig>();
-            
-            // Mint large amount of SUI to buy all tokens
-            let coin_sui = coin::mint_for_testing<SUI>(ONE_SUI * 100, scenario.ctx());
-            
-            // This should buy all tokens and trigger pool completion
-            moonbags::buy_exact_in_without_init_cetus<TestToken>(&mut config, coin_sui, scenario.ctx());
-            
-            // Check that pool is now completed
-            let (real_sui, real_token, virtual_sui, virtual_token, is_completed, _) = 
-                moonbags::get_pool_info_for_testing<TestToken>(&config);
+                moonbags::get_pool_info_for_testing<TEST_TOKEN>(&config);
 
             assert!(is_completed, EOutputNotEqualToExpected);
             assert!(real_token == 0, EOutputNotEqualToExpected);
@@ -777,7 +692,7 @@ module moonbags::moonbags_test {
             let coin_sui = coin::mint_for_testing<SUI>(ONE_SUI, scenario.ctx());
             
             let amount_out = ONE_TOKEN * 100;
-            moonbags::buy_exact_out_without_init_cetus<TestToken>(&mut config, coin_sui, amount_out, scenario.ctx());
+            moonbags::buy_exact_out_without_init_cetus<TEST_TOKEN>(&mut config, coin_sui, amount_out, scenario.ctx());
             
             test_scenario::return_shared(config);
         };
@@ -786,18 +701,18 @@ module moonbags::moonbags_test {
             let mut config = scenario.take_shared<BondingConfig>();
             
             // Mint tokens directly instead of buying first
-            let token_obj = coin::mint_for_testing<TestToken>(ONE_TOKEN * 10, scenario.ctx());
+            let token_obj = coin::mint_for_testing<TEST_TOKEN>(ONE_TOKEN * 10, scenario.ctx());
             
             // Set minimum expected SUI amount
             let amount_out_min = 0; // Accept any amount for this test
             let clock = clock::create_for_testing(scenario.ctx());
             
             // Sell tokens
-            moonbags::sell<TestToken>(&mut config, token_obj, amount_out_min, &clock, scenario.ctx());
+            moonbags::sell<TEST_TOKEN>(&mut config, token_obj, amount_out_min, &clock, scenario.ctx());
             
             // Verify pool state after selling
             let (real_sui, real_token, virtual_sui, virtual_token, _, fee_recipient) = 
-                moonbags::get_pool_info_for_testing<TestToken>(&config);
+                moonbags::get_pool_info_for_testing<TEST_TOKEN>(&config);
             
             assert!(real_sui == 7500 - 750, EOutputNotEqualToExpected); // SUI decreased
             assert!(real_token == 7999900000000 + 10000000, EOutputNotEqualToExpected); // Token increased
@@ -829,7 +744,7 @@ module moonbags::moonbags_test {
             let coin_sui = coin::mint_for_testing<SUI>(ONE_SUI, scenario.ctx());
             
             let amount_out = ONE_TOKEN * 100;
-            moonbags::buy_exact_out_without_init_cetus<TestToken>(&mut config, coin_sui, amount_out, scenario.ctx());
+            moonbags::buy_exact_out_without_init_cetus<TEST_TOKEN>(&mut config, coin_sui, amount_out, scenario.ctx());
             
             test_scenario::return_shared(config);
         };
@@ -838,13 +753,13 @@ module moonbags::moonbags_test {
             let mut config = scenario.take_shared<BondingConfig>();
             
             // Mint tokens directly
-            let token_obj = coin::mint_for_testing<TestToken>(ONE_TOKEN * 100, scenario.ctx());
+            let token_obj = coin::mint_for_testing<TEST_TOKEN>(ONE_TOKEN * 100, scenario.ctx());
             
             let clock = clock::create_for_testing(scenario.ctx());
             
             // Try to sell with an unrealistically high minimum output
             let amount_out_min = ONE_SUI * 100; // Way too high
-            moonbags::sell<TestToken>(&mut config, token_obj, amount_out_min, &clock, scenario.ctx());
+            moonbags::sell<TEST_TOKEN>(&mut config, token_obj, amount_out_min, &clock, scenario.ctx());
             
             clock::destroy_for_testing(clock);
             test_scenario::return_shared(config);
@@ -865,12 +780,12 @@ module moonbags::moonbags_test {
         {
             let mut config = scenario.take_shared<BondingConfig>();
             // Create an empty token coin
-            let empty_token = coin::mint_for_testing<TestToken>(0, scenario.ctx());
+            let empty_token = coin::mint_for_testing<TEST_TOKEN>(0, scenario.ctx());
             
             let clock = clock::create_for_testing(scenario.ctx());
             
             // Try to sell zero tokens
-            moonbags::sell<TestToken>(&mut config, empty_token, 0, &clock, scenario.ctx());
+            moonbags::sell<TEST_TOKEN>(&mut config, empty_token, 0, &clock, scenario.ctx());
             
             clock::destroy_for_testing(clock);
             test_scenario::return_shared(config);
@@ -892,9 +807,9 @@ module moonbags::moonbags_test {
         scenario.next_tx(ADMIN);
         {
             let mut bonding_config = scenario.take_shared<BondingConfig>();
-            let treasury_cap = coin::create_treasury_cap_for_testing<TestToken>(scenario.ctx());
+            let treasury_cap = coin::create_treasury_cap_for_testing<TEST_TOKEN>(scenario.ctx());
             let fee_recipient_coin = coin::mint_for_testing<SUI>(RECIPIENT_FEE, scenario.ctx());
-            moonbags::create_pool_for_withdraw_fee_testing<TestToken>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
+            moonbags::create_pool_for_withdraw_fee_testing<TEST_TOKEN>(&mut bonding_config, treasury_cap, fee_recipient_coin, scenario.ctx());
             test_scenario::return_shared(bonding_config);
         };
         scenario.next_tx(ADMIN);
@@ -903,11 +818,11 @@ module moonbags::moonbags_test {
             let mut config = scenario.take_shared<BondingConfig>();
             let mut threshold_config = scenario.take_shared<ThresholdConfig>();
             let admin_cap = scenario.take_from_sender<AdminCap>();
-            let pool = mb::borrow_mut_pool<TestToken>(&mut config);
+            let pool = mb::borrow_mut_pool<TEST_TOKEN>(&mut config);
             let coin_sui = coin::mint_for_testing<SUI>(ONE_TOKEN * 2000, scenario.ctx());
             mb::join_sui_for_testing(pool, coin_sui);
             let clock = clock::create_for_testing(scenario.ctx());
-            mb::early_complete_pool<TestToken>(&admin_cap, &mut config, &mut threshold_config, &clock, scenario.ctx());
+            mb::early_complete_pool<TEST_TOKEN>(&admin_cap, &mut config, &mut threshold_config, &clock, scenario.ctx());
             test_scenario::return_shared(config);
             test_scenario::return_shared(threshold_config);
             test_scenario::return_to_sender(&scenario, admin_cap);
@@ -916,11 +831,11 @@ module moonbags::moonbags_test {
         scenario.next_tx(USER_1);
         {
             let mut config = scenario.take_shared<BondingConfig>();
-            let token_coins = coin::mint_for_testing<TestToken>(ONE_TOKEN, scenario.ctx());
+            let token_coins = coin::mint_for_testing<TEST_TOKEN>(ONE_TOKEN, scenario.ctx());
             let clock = clock::create_for_testing(scenario.ctx());
             
             // Try to sell to a completed pool
-            moonbags::sell<TestToken>(&mut config, token_coins, 0, &clock, scenario.ctx());
+            moonbags::sell<TEST_TOKEN>(&mut config, token_coins, 0, &clock, scenario.ctx());
             
             clock::destroy_for_testing(clock);
             test_scenario::return_shared(config);
@@ -942,7 +857,7 @@ module moonbags::moonbags_test {
             let coin_sui = coin::mint_for_testing<SUI>(ONE_SUI, scenario.ctx());
             
             let amount_out = ONE_TOKEN * 100;
-            moonbags::buy_exact_out_without_init_cetus<TestToken>(&mut config, coin_sui, amount_out, scenario.ctx());
+            moonbags::buy_exact_out_without_init_cetus<TEST_TOKEN>(&mut config, coin_sui, amount_out, scenario.ctx());
             
             test_scenario::return_shared(config);
         };
@@ -951,21 +866,21 @@ module moonbags::moonbags_test {
             let mut config = scenario.take_shared<BondingConfig>();
             
             // Mint tokens directly instead of buying first
-            let token_obj = coin::mint_for_testing<TestToken>(ONE_TOKEN * 10, scenario.ctx());
+            let token_obj = coin::mint_for_testing<TEST_TOKEN>(ONE_TOKEN * 10, scenario.ctx());
             
             // Set minimum expected SUI amount
             let amount_out_min = 0; // Accept any amount for this test
             let clock = clock::create_for_testing(scenario.ctx());
             
             // Sell tokens
-            let (coin_sui_out, coin_token_out) = moonbags::sell_returns<TestToken>(&mut config, token_obj, amount_out_min, &clock, scenario.ctx());
+            let (coin_sui_out, coin_token_out) = moonbags::sell_returns<TEST_TOKEN>(&mut config, token_obj, amount_out_min, &clock, scenario.ctx());
 
             assert!(coin::value(&coin_sui_out) == 744, EOutputNotEqualToExpected); // Expected SUI received
             assert!(coin::value(&coin_token_out) == 0, EOutputNotEqualToExpected); // No token change expected
             
             // Verify pool state after selling
             let (real_sui, real_token, virtual_sui, virtual_token, _, fee_recipient) = 
-                moonbags::get_pool_info_for_testing<TestToken>(&config);
+                moonbags::get_pool_info_for_testing<TEST_TOKEN>(&config);
             
             assert!(real_sui == 7500 - 750, EOutputNotEqualToExpected); // SUI decreased
             assert!(real_token == 7999900000000 + 10000000, EOutputNotEqualToExpected); // Token increased

@@ -1,5 +1,5 @@
 import { TransactionBlock } from "@mysten/sui.js/transactions";
-import { configAddress, packageAddress, processResult, stakeConfigAddress } from "./utils";
+import { configAddress, packageAddress, processResult, stakeConfigAddress, client } from "./utils";
 import readline from "readline";
 
 const createPool = async (tokenAddress: string, treasuryCapObjId: string) => {
@@ -15,6 +15,8 @@ const createPool = async (tokenAddress: string, treasuryCapObjId: string) => {
     const treasuryCap = tx.object(treasuryCapObjId);
     const clock = tx.object("0x6"); // Clock object
 
+    const tokenMetadataObj = await client.getCoinMetadata({ coinType: tokenAddress });
+
     // Move call to create the pool
     tx.moveCall({
       target: `${packageAddress}::moonbags::create`,
@@ -23,7 +25,8 @@ const createPool = async (tokenAddress: string, treasuryCapObjId: string) => {
         configuration,
         stakeConfig,
         treasuryCap,
-        tx.pure([10_000_000_000]), // max_supply
+        tx.object(tokenMetadataObj?.id!),
+        tx.pure([2_000_000_000]), // max_supply
         clock,
         tx.pure("name"), // name
         tx.pure("symbol"), // symbol
