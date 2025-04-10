@@ -12,6 +12,7 @@ export interface IObjectInfo {
 export const packageAddress = process.env.PACKAGE_ADDRESS!;
 export const configAddress = process.env.CONFIG_ADDRESS!;
 export const stakeConfigAddress = process.env.STAKE_CONFIG_ADDRESS!;
+export const lockConfigAddress = process.env.LOCK_CONFIG_ADDRESS!;
 export const cetusPoolsId =
   "0x50eb61dd5928cec5ea04711a2e9b72e5237e79e9fbcd2ce3d5469dc8708e0ee2";
 export const cetusGlobalConfigId =
