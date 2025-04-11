@@ -147,11 +147,13 @@ module moonbags::token_lock_test {
         {
             let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
             let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
+            let config = ts::take_shared<Configuration>(&scenario);
             
             // Advance clock past end time
             clock::increment_for_testing(&mut clock, 3700000); // 1 hour + buffer
             
             moonbags_token_lock::withdraw<TEST_TOKEN>(
+                &config,
                 &mut lock_contract,
                 &clock,
                 ts::ctx(&mut scenario)
@@ -162,6 +164,7 @@ module moonbags::token_lock_test {
             assert!(closed, EOutputNotEqualToExpected);
             
             ts::return_shared(lock_contract);
+            ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
         
@@ -219,18 +222,21 @@ module moonbags::token_lock_test {
         {
             let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
             let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
+            let config = ts::take_shared<Configuration>(&scenario);
             
             // Advance clock but still within lock period (e.g., 30 minutes = 1,800,000 ms)
             clock::increment_for_testing(&mut clock, 1800000);
             
             // This should fail because we're only halfway through the lock period (3,600,000 ms)
             moonbags_token_lock::withdraw<TEST_TOKEN>(
+                &config,
                 &mut lock_contract,
                 &clock,
                 ts::ctx(&mut scenario)
             );
             
             ts::return_shared(lock_contract);
+            ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
         
@@ -280,16 +286,19 @@ module moonbags::token_lock_test {
         {
             let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
             let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
+            let config = ts::take_shared<Configuration>(&scenario);
             
             clock::increment_for_testing(&mut clock, 3700000);
             
             moonbags_token_lock::withdraw<TEST_TOKEN>(
+                &config,
                 &mut lock_contract,
                 &clock,
                 ts::ctx(&mut scenario)
             );
             
             ts::return_shared(lock_contract);
+            ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
         
@@ -298,14 +307,17 @@ module moonbags::token_lock_test {
         {
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
+            let config = ts::take_shared<Configuration>(&scenario);
             
             moonbags_token_lock::withdraw<TEST_TOKEN>(
+                &config,
                 &mut lock_contract,
                 &clock,
                 ts::ctx(&mut scenario)
             );
             
             ts::return_shared(lock_contract);
+            ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
         

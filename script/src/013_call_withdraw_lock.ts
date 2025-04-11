@@ -1,6 +1,6 @@
 import { TransactionBlock } from "@mysten/sui.js/transactions";
 import readline from "readline";
-import { packageAddress, processResult } from "./utils";
+import { packageAddress, processResult, lockConfigAddress } from "./utils";
 
 const withdrawFromLock = async (tokenAddress: string, lockContractId: string) => {
     try {
@@ -13,12 +13,14 @@ const withdrawFromLock = async (tokenAddress: string, lockContractId: string) =>
 
         // Get the lock contract reference
         const lockContract = tx.object(lockContractId);
+        const lockConfig = tx.object(lockConfigAddress);
         const clock = tx.object("0x6"); // System Clock object
 
         tx.moveCall({
             target: `${packageAddress}::moonbags_token_lock::withdraw`,
             typeArguments: [tokenAddress],
             arguments: [
+                lockConfig,
                 lockContract,
                 clock
             ],
