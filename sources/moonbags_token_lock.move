@@ -1,5 +1,8 @@
 module moonbags::moonbags_token_lock {
     // === Imports ===
+    use std::ascii::String;
+    use std::type_name;
+
     use sui::coin::{Self, Coin};
     use sui::clock::{Self, Clock};
     use sui::event;
@@ -40,6 +43,7 @@ module moonbags::moonbags_token_lock {
     // === Events ===
     public struct LockCreatedEvent has copy, drop {
         contract_id: address,
+        token_address: String,
         locker: address,
         recipient: address,
         amount: u64,
@@ -83,9 +87,9 @@ module moonbags::moonbags_token_lock {
      * @param clock - Reference to the clock object for timestamp verification
      * @param ctx - Transaction context
      */
-    public entry fun create_lock<T>(
+    public entry fun create_lock<Token>(
         config: &Configuration,
-        token_coin: &mut Coin<T>,
+        token_coin: &mut Coin<Token>,
         recipient: address,
         amount: u64,
         duration_ms: u64,
@@ -106,7 +110,7 @@ module moonbags::moonbags_token_lock {
         let fee_coin = coin::split(token_coin, fee, ctx);
         transfer::public_transfer(fee_coin, config.admin);
         
-        let contract = LockContract<T> {
+        let contract = LockContract<Token> {
             id          : object::new(ctx),
             balance     : coin::into_balance(coin::split(token_coin, amount, ctx)),
             amount      : amount,
@@ -118,13 +122,14 @@ module moonbags::moonbags_token_lock {
         };
         
         event::emit(LockCreatedEvent {
-            contract_id : object::uid_to_address(&contract.id),
-            locker      : ctx.sender(),
-            recipient   : recipient,
-            amount      : amount,
-            fee         : fee,
-            start_time  : start_time,
-            end_time    : end_time,
+            contract_id     : object::uid_to_address(&contract.id),
+            token_address   : type_name::into_string(type_name::get<Token>()),
+            locker          : ctx.sender(),
+            recipient       : recipient,
+            amount          : amount,
+            fee             : fee,
+            start_time      : start_time,
+            end_time        : end_time,
         });
 
         transfer::share_object(contract);
@@ -137,15 +142,24 @@ module moonbags::moonbags_token_lock {
      * @param clock - Reference to the clock object for timestamp verification
      * @param ctx - Transaction context
      */
-    public entry fun withdraw<T>(
-        contract: &mut LockContract<T>,
+    public entry fun withdraw<Token>(
+        config: &Configuration,
+        contract: &mut LockContract<Token>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        let sender = ctx.sender();
+
+        assert!(
+            sender == config.admin || 
+            sender == contract.recipient || 
+            sender == contract.locker, 
+            EUnauthorized
+        );
+        
         assert!(!contract.closed, EContractClosed);
         
         let current_time = clock::timestamp_ms(clock);
-        
         assert!(current_time >= contract.end_time, EUnauthorized);
 
         let amount = balance::value(&contract.balance);
@@ -157,7 +171,7 @@ module moonbags::moonbags_token_lock {
         
         event::emit(TokensWithdrawnEvent {
             contract_id : object::uid_to_address(&contract.id),
-            sender      : ctx.sender(),
+            sender      : sender,
             recipient   : contract.recipient,
             amount      : amount,
         });
