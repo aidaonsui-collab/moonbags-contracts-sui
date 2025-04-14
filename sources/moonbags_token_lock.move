@@ -68,7 +68,7 @@ module moonbags::moonbags_token_lock {
         transfer::public_share_object(
             Configuration {
                 id          : object::new(ctx),
-                lock_fee    : 19, // 0,19% fee
+                lock_fee    : 0, // 0% fee
                 admin       : ctx.sender(),
             }
         );
@@ -83,7 +83,7 @@ module moonbags::moonbags_token_lock {
      * @param token_coin - Mutable reference to the coin that will be locked (must contain enough balance for amount + fee)
      * @param recipient - Address that will be able to claim the tokens after the lock period
      * @param amount - Amount of tokens to lock (must be greater than FEE_DENOMINATOR)
-     * @param duration_ms - Duration of the lock in milliseconds (must be greater than 0)
+     * @param end_time - End time of the lock in milliseconds (must be greater than current time)
      * @param clock - Reference to the clock object for timestamp verification
      * @param ctx - Transaction context
      */
@@ -92,15 +92,14 @@ module moonbags::moonbags_token_lock {
         mut token_coin: Coin<Token>,
         recipient: address,
         amount: u64,
-        duration_ms: u64,
+        end_time: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         let start_time = clock::timestamp_ms(clock);
-        let end_time = start_time + duration_ms;
 
         assert!(amount >= FEE_DENOMINATOR, EInvalidParams);
-        assert!(duration_ms >= 60 * 1000, EInvalidParams); // 1 minute lock time minimum
+        assert!(end_time > start_time, EInvalidParams);
 
         let fee = (amount * config.lock_fee) / FEE_DENOMINATOR;
         let total_required = amount + fee;

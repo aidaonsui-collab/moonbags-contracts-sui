@@ -64,14 +64,17 @@ module moonbags::token_lock_test {
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
             let amount = 15000;
-            let duration_ms = ONE_HOUR; // 1 hour
+            
+            // Calculate end time by adding duration to current time
+            let current_time = clock::timestamp_ms(&clock);
+            let end_time = current_time + ONE_HOUR;
             
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
                 user_coin,
                 RECIPIENT,
                 amount,
-                duration_ms,
+                end_time, // Using end time instead of duration
                 &clock,
                 ts::ctx(&mut scenario)
             );
@@ -124,14 +127,17 @@ module moonbags::token_lock_test {
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
             let amount = 15000;
-            let duration_ms = ONE_HOUR; // 1 hour
+            
+            // Calculate end time by adding duration to current time
+            let current_time = clock::timestamp_ms(&clock);
+            let end_time = current_time + ONE_HOUR;
             
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
                 user_coin,
                 RECIPIENT,
                 amount,
-                duration_ms,
+                end_time, // Using end time instead of duration
                 &clock,
                 ts::ctx(&mut scenario)
             );
@@ -200,12 +206,18 @@ module moonbags::token_lock_test {
             let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
+            let amount = 15000;
+            
+            // Calculate end time by adding duration to current time
+            let current_time = clock::timestamp_ms(&clock);
+            let end_time = current_time + ONE_HOUR;
+            
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
                 user_coin,
                 RECIPIENT,
-                15000,
-                ONE_HOUR,
+                amount,
+                end_time, // Using end time instead of duration
                 &clock,
                 ts::ctx(&mut scenario)
             );
@@ -263,12 +275,18 @@ module moonbags::token_lock_test {
             let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
+            let amount = 15000;
+            
+            // Calculate end time by adding duration to current time
+            let current_time = clock::timestamp_ms(&clock);
+            let end_time = current_time + ONE_HOUR;
+            
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
                 user_coin,
                 RECIPIENT,
-                15000,
-                ONE_HOUR,
+                amount,
+                end_time, // Using end time instead of duration
                 &clock,
                 ts::ctx(&mut scenario)
             );
@@ -389,7 +407,7 @@ module moonbags::token_lock_test {
     
     #[test]
     #[expected_failure(abort_code = moonbags_token_lock::EInvalidParams)]
-    fun test_create_lock_invalid_duration() {
+    fun test_create_lock_invalid_end_time() {
         setup();
         let mut scenario = ts::begin(ADMIN);
         
@@ -401,20 +419,25 @@ module moonbags::token_lock_test {
             transfer::public_transfer(coin, USER);
         };
         
-        // Try to create lock with duration that's too short
+        // Try to create lock with end time in the past
         ts::next_tx(&mut scenario, USER);
         {
             let config = ts::take_shared<Configuration>(&scenario);
             let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
-            let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+            let mut clock = clock::create_for_testing(ts::ctx(&mut scenario));
+
+            clock::increment_for_testing(&mut clock, ONE_HOUR);
             
-            // Duration less than minimum (1 minute)
+            let current_time = clock::timestamp_ms(&clock);
+            let past_end_time = current_time - ONE_HOUR; // 1 hour in the past
+            
+            // End time earlier than current time (should fail)
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
                 user_coin,
                 RECIPIENT,
                 15000,
-                30000, // 30 seconds (under minimum)
+                past_end_time, // End time in the past
                 &clock,
                 ts::ctx(&mut scenario)
             );
@@ -508,18 +531,19 @@ module moonbags::token_lock_test {
             
             let initial_balance = coin::value(&user_coin);
             
+            // Calculate end time by adding duration to current time
+            let current_time = clock::timestamp_ms(&clock);
+            let end_time = current_time + ONE_HOUR;
+            
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
                 user_coin,
                 RECIPIENT,
                 amount,
-                ONE_HOUR,
+                end_time, // Using end time instead of duration
                 &clock,
                 ts::ctx(&mut scenario)
             );
-
-            std::debug::print(&initial_balance);
-            std::debug::print(&(amount + 150));
 
             let expected_final_balance = 4850;
             assert!(initial_balance - expected_final_balance == amount + 150, EOutputNotEqualToExpected); // Amount + fee

@@ -6,12 +6,12 @@ const createTokenLock = async (
   tokenAddress: string,
   recipient: string,
   amount: number,
-  durationMs: number,
+  endTimeMs: number,
   tokenObjectId: string
 ) => {
   try {
     console.log(
-      `Creating token lock for ${amount} ${tokenAddress.split("::").at(-1)} to ${recipient}`
+      `Creating token lock for ${amount} ${tokenAddress.split("::").at(-1)} to ${recipient} until timestamp ${endTimeMs}`
     );
 
     const tx = new TransactionBlock();
@@ -30,7 +30,7 @@ const createTokenLock = async (
         tokenCoin,
         tx.pure(recipient),
         tx.pure(amount),
-        tx.pure(durationMs),
+        tx.pure(endTimeMs),
         clock,
       ],
     });
@@ -51,15 +51,33 @@ const run = async () => {
     rl.question("Enter the token coin object ID: ", (tokenObjectId) => {
       rl.question("Enter recipient address: ", (recipient) => {
         rl.question("Enter amount to lock: ", (amount) => {
-          rl.question("Enter duration in milliseconds (min 60000): ", (duration) => {
-            createTokenLock(
-              tokenAddress,
-              recipient,
-              parseInt(amount),
-              parseInt(duration),
-              tokenObjectId
-            );
-            rl.close();
+          rl.question("Do you want to set (1) duration or (2) exact end time? (1/2): ", (option) => {
+            if (option === "1") {
+              rl.question("Enter duration in milliseconds (min 60000): ", (duration) => {
+                const currentTimeMs = Date.now();
+                const endTimeMs = currentTimeMs + parseInt(duration);
+                
+                createTokenLock(
+                  tokenAddress,
+                  recipient,
+                  parseInt(amount),
+                  endTimeMs,
+                  tokenObjectId
+                );
+                rl.close();
+              });
+            } else {
+              rl.question("Enter end time in milliseconds (timestamp): ", (endTime) => {
+                createTokenLock(
+                  tokenAddress,
+                  recipient,
+                  parseInt(amount),
+                  parseInt(endTime),
+                  tokenObjectId
+                );
+                rl.close();
+              });
+            }
           });
         });
       });
