@@ -89,7 +89,7 @@ module moonbags::moonbags_token_lock {
      */
     public entry fun create_lock<Token>(
         config: &Configuration,
-        token_coin: &mut Coin<Token>,
+        mut token_coin: Coin<Token>,
         recipient: address,
         amount: u64,
         duration_ms: u64,
@@ -105,14 +105,14 @@ module moonbags::moonbags_token_lock {
         let fee = (amount * config.lock_fee) / FEE_DENOMINATOR;
         let total_required = amount + fee;
         
-        assert!(coin::value(token_coin) >= total_required, EInsufficientFunds);
+        assert!(coin::value(&token_coin) >= total_required, EInsufficientFunds);
 
-        let fee_coin = coin::split(token_coin, fee, ctx);
+        let fee_coin = coin::split(&mut token_coin, fee, ctx);
         transfer::public_transfer(fee_coin, config.admin);
-        
+
         let contract = LockContract<Token> {
             id          : object::new(ctx),
-            balance     : coin::into_balance(coin::split(token_coin, amount, ctx)),
+            balance     : coin::into_balance(coin::split(&mut token_coin, amount, ctx)),
             amount      : amount,
             start_time  : start_time,
             end_time    : end_time,
@@ -120,7 +120,9 @@ module moonbags::moonbags_token_lock {
             locker      : ctx.sender(),
             closed      : false
         };
-        
+
+        transfer::public_transfer(token_coin , ctx.sender());
+
         event::emit(LockCreatedEvent {
             contract_id     : object::uid_to_address(&contract.id),
             token_address   : type_name::into_string(type_name::get<Token>()),
