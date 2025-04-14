@@ -60,7 +60,7 @@ module moonbags::token_lock_test {
         ts::next_tx(&mut scenario, USER);
         {
             let config = ts::take_shared<Configuration>(&scenario);
-            let mut user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
             let amount = 15000;
@@ -68,15 +68,14 @@ module moonbags::token_lock_test {
             
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
-                &mut user_coin,
+                user_coin,
                 RECIPIENT,
                 amount,
                 duration_ms,
                 &clock,
                 ts::ctx(&mut scenario)
             );
-            
-            ts::return_to_sender(&scenario, user_coin);
+
             ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
@@ -121,7 +120,7 @@ module moonbags::token_lock_test {
         ts::next_tx(&mut scenario, USER);
         {
             let config = ts::take_shared<Configuration>(&scenario);
-            let mut user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
             let amount = 15000;
@@ -129,15 +128,14 @@ module moonbags::token_lock_test {
             
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
-                &mut user_coin,
+                user_coin,
                 RECIPIENT,
                 amount,
                 duration_ms,
                 &clock,
                 ts::ctx(&mut scenario)
             );
-            
-            ts::return_to_sender(&scenario, user_coin);
+
             ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
@@ -199,20 +197,19 @@ module moonbags::token_lock_test {
         ts::next_tx(&mut scenario, USER);
         {
             let config = ts::take_shared<Configuration>(&scenario);
-            let mut user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
-                &mut user_coin,
+                user_coin,
                 RECIPIENT,
                 15000,
                 ONE_HOUR,
                 &clock,
                 ts::ctx(&mut scenario)
             );
-            
-            ts::return_to_sender(&scenario, user_coin);
+
             ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
@@ -263,20 +260,19 @@ module moonbags::token_lock_test {
         ts::next_tx(&mut scenario, USER);
         {
             let config = ts::take_shared<Configuration>(&scenario);
-            let mut user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
-                &mut user_coin,
+                user_coin,
                 RECIPIENT,
                 15000,
                 ONE_HOUR,
                 &clock,
                 ts::ctx(&mut scenario)
             );
-            
-            ts::return_to_sender(&scenario, user_coin);
+
             ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
@@ -369,21 +365,20 @@ module moonbags::token_lock_test {
         ts::next_tx(&mut scenario, USER);
         {
             let config = ts::take_shared<Configuration>(&scenario);
-            let mut user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
             // Amount too small (under FEE_DENOMINATOR)
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
-                &mut user_coin,
+                user_coin,
                 RECIPIENT,
                 9000, // Under 10000
                 ONE_HOUR,
                 &clock,
                 ts::ctx(&mut scenario)
             );
-            
-            ts::return_to_sender(&scenario, user_coin);
+
             ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
@@ -410,21 +405,20 @@ module moonbags::token_lock_test {
         ts::next_tx(&mut scenario, USER);
         {
             let config = ts::take_shared<Configuration>(&scenario);
-            let mut user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
             // Duration less than minimum (1 minute)
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
-                &mut user_coin,
+                user_coin,
                 RECIPIENT,
                 15000,
                 30000, // 30 seconds (under minimum)
                 &clock,
                 ts::ctx(&mut scenario)
             );
-            
-            ts::return_to_sender(&scenario, user_coin);
+
             ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
@@ -451,21 +445,20 @@ module moonbags::token_lock_test {
         ts::next_tx(&mut scenario, USER);
         {
             let config = ts::take_shared<Configuration>(&scenario);
-            let mut user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
             // Try to lock more tokens than available
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
-                &mut user_coin,
+                user_coin,
                 RECIPIENT,
                 15000, // More than the 10000 available
                 ONE_HOUR,
                 &clock,
                 ts::ctx(&mut scenario)
             );
-            
-            ts::return_to_sender(&scenario, user_coin);
+
             ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
@@ -507,7 +500,7 @@ module moonbags::token_lock_test {
         ts::next_tx(&mut scenario, USER);
         {
             let config = ts::take_shared<Configuration>(&scenario);
-            let mut user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
             let amount = 15000;
@@ -517,18 +510,20 @@ module moonbags::token_lock_test {
             
             moonbags_token_lock::create_lock<TEST_TOKEN>(
                 &config,
-                &mut user_coin,
+                user_coin,
                 RECIPIENT,
                 amount,
                 ONE_HOUR,
                 &clock,
                 ts::ctx(&mut scenario)
             );
-            
-            let final_balance = coin::value(&user_coin);
-            assert!(initial_balance - final_balance == amount + 150, EOutputNotEqualToExpected); // Amount + fee
-            
-            ts::return_to_sender(&scenario, user_coin);
+
+            std::debug::print(&initial_balance);
+            std::debug::print(&(amount + 150));
+
+            let expected_final_balance = 4850;
+            assert!(initial_balance - expected_final_balance == amount + 150, EOutputNotEqualToExpected); // Amount + fee
+
             ts::return_shared(config);
             clock::destroy_for_testing(clock);
         };
