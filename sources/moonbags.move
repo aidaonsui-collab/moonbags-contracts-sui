@@ -794,51 +794,24 @@ module moonbags::moonbags {
     public entry fun init_cetus_pool<Token>(admin: address, coin_sui: Coin<SUI>, coin_token: Coin<Token>, pool: &mut Pool<Token>, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext) {
         let token_amount = coin::value<Token>(&coin_token) as u256;
         let sui_amount = coin::value<SUI>(&coin_sui) as u256;
-        let token_name = type_name::into_string(type_name::get<Token>());
-        let token_name_bytes = *ascii::as_bytes(&token_name);
-        let sui_name = type_name::into_string(type_name::get<SUI>());
-        let sui_name_bytes = *ascii::as_bytes(&sui_name);
-        let mut i = 0;
-        let mut is_token_first = false;
-        while (i < vector::length<u8>(&token_name_bytes)) {
-            let sui_name_byte = *vector::borrow<u8>(&sui_name_bytes, i);
-            let token_name_byte = *vector::borrow<u8>(&token_name_bytes, i);
-            if (token_name_byte < sui_name_byte) {
-                is_token_first = false;
-                break
-            };
-            if (token_name_byte > sui_name_byte) {
-                is_token_first = true;
-                break
-            };
-            i = i + 1;
-        };
-
         let metadata_token = dynamic_object_field::borrow(&pool.id, COIN_METADATA_FIELD);
 
-        if (is_token_first) {
-            let (position, coin_token, coin_sui) = pool_creator::create_pool_v2<Token, SUI>(
-                cetus_config, cetus_pools, 200, sqrt(340282366920938463463374607431768211456 * sui_amount / token_amount),
-                string::utf8(b""), 4294523696, 443600,
-                coin_token, coin_sui, metadata_token, metadata_sui,
-                true, clock, ctx
-            );
-            let burn_proof = lp_burn::burn_lp_v2(cetus_burn_manager, position, ctx);
-            dynamic_object_field::add(&mut pool.id, BURN_PROOF_FIELD, burn_proof);
-            transfer::public_transfer<Coin<Token>>(coin_token, admin);
-            transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
+        let icon_url = if (coin::get_icon_url<Token>(metadata_token).is_some()) {
+            coin::get_icon_url<Token>(metadata_token).extract().inner_url().to_string()
         } else {
-            let (position, coin_sui, coin_token) = pool_creator::create_pool_v2<SUI, Token>(
-                cetus_config, cetus_pools, 200, sqrt(340282366920938463463374607431768211456 * token_amount / sui_amount),
-                string::utf8(b""), 4294523696, 443600,
-                coin_sui, coin_token, metadata_sui, metadata_token,
-                false, clock, ctx
-            );
-            let burn_proof = lp_burn::burn_lp_v2(cetus_burn_manager, position, ctx);
-            dynamic_object_field::add(&mut pool.id, BURN_PROOF_FIELD, burn_proof);
-            transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
-            transfer::public_transfer<Coin<Token>>(coin_token, admin);
+            string::utf8(b"")
         };
+
+        let (position, coin_token, coin_sui) = pool_creator::create_pool_v2<Token, SUI>(
+            cetus_config, cetus_pools, 200, sqrt(340282366920938463463374607431768211456 * sui_amount / token_amount),
+            icon_url, 4294523696, 443600,
+            coin_token, coin_sui, metadata_token, metadata_sui,
+            true, clock, ctx
+        );
+        let burn_proof = lp_burn::burn_lp_v2(cetus_burn_manager, position, ctx);
+        dynamic_object_field::add(&mut pool.id, BURN_PROOF_FIELD, burn_proof);
+        transfer::public_transfer<Coin<Token>>(coin_token, admin);
+        transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
 
         // Make coin metadata token publicly accessible to anyone
         let metadata_token = dynamic_object_field::remove<vector<u8>, CoinMetadata<Token>>(&mut pool.id, COIN_METADATA_FIELD);
