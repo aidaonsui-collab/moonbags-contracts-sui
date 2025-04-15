@@ -41,6 +41,10 @@ sui client publish
 
 # If upgrading an existing package
 sui client upgrade --upgrade-capability <TESTNET_UPGRADE_CAPABILITY>
+
+# Run script to create SHRO staking pool after deployment
+cd script
+npx ts-node src/003_call_init_staking_pool.ts
 ```
 
 > **Important**: Before deployment, refer to the [Configuration Values](#5-configuration-values) section to ensure you're using the correct parameters for testnet.
@@ -56,6 +60,10 @@ sui client publish
 
 # If upgrading an existing package
 sui client upgrade --upgrade-capability <MAINNET_UPGRADE_CAPABILITY>
+
+# Run script to create SHRO staking pool after deployment
+cd script
+npx ts-node src/003_call_init_staking_pool.ts
 ```
 
 > **Important**: Before deployment, refer to the [Configuration Values](#5-configuration-values) section to ensure you're using the correct parameters for mainnet.
