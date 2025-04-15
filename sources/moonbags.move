@@ -48,6 +48,8 @@ module moonbags::moonbags {
         id: UID,
         version: u64,
         admin: address,
+        treasury: address,
+        fee_platform_recipient: address,
         platform_fee: u64,
         initial_virtual_token_reserves: u64,
         remain_token_reserves: u64,
@@ -163,6 +165,8 @@ module moonbags::moonbags {
             id: object::new(ctx),
             version: VERSION,
             admin: ctx.sender(),
+            treasury: ctx.sender(),
+            fee_platform_recipient: ctx.sender(),
             platform_fee: 100, // 1%
             initial_virtual_token_reserves: 10000000000000, // 10 million
             remain_token_reserves: 2000000000000, // 2 million
@@ -690,6 +694,16 @@ module moonbags::moonbags {
         emit<OwnershipTransferredEvent>(ownership_transferred_event);
     }
 
+    public entry fun update_fee_recipients(
+        _: &AdminCap,
+        configuration: &mut Configuration,
+        new_treasury: address,
+        new_fee_platform_recipient: address,
+    ) {
+        configuration.treasury = new_treasury;
+        configuration.fee_platform_recipient = new_fee_platform_recipient;
+    }
+
     fun transfer_pool<Token>(admin: address, pool: &mut Pool<Token>, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext) {
         pool.is_completed = true;
 
@@ -825,7 +839,7 @@ module moonbags::moonbags {
         let token_address = type_name::get_address(&type_name::get<Token>());
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut bonding_curve_config.id, token_address);
         
-        distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.admin, stake_config, clock, ctx);
+        distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.fee_platform_recipient, stake_config, clock, ctx);
     }
 
     public fun withdraw_fee_cetus<Token, PlatformToken>(
@@ -855,10 +869,10 @@ module moonbags::moonbags {
             ctx
         );
 
-        transfer::public_transfer<Coin<Token>>(token_coin, bonding_curve_config.admin); // token fee to admin for now
+        transfer::public_transfer<Coin<Token>>(token_coin, bonding_curve_config.treasury); // token fee to address for now
         coin::join(&mut pool.fee_recipient, sui_coin);
         
-        distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.admin, stake_config, clock, ctx);
+        distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.fee_platform_recipient, stake_config, clock, ctx);
     }
 
     // Helper function to distribute fees to different stakeholders
