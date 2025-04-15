@@ -84,8 +84,8 @@ The following table shows configuration values in sc for testnet and mainnet env
 | MINIMUM_THRESHOLD | 2_000_000_000 (2 SUI) | 2_000_000_000_000 (2000 SUI) | Minimum allowable threshold |
 | PLATFORM_FEE | 100 (1%) | 100 (1%) | Platform transaction fee |
 | GRADUATED_FEE | 10 (0.1%) | 10 (0.1%) | Fee for graduated transactions |
-| INITIAL_VIRTUAL_TOKEN_RESERVES | 10_000_000_000_000 (10M) | 10_000_000_000_000_000 (10B) | Initial supply for bonding pool |
-| REMAIN_TOKEN_RESERVES | 2_000_000_000_000 (2M) | 2_000_000_000_000_000 (2B) | Remaining token supply |
+| INITIAL_VIRTUAL_TOKEN_RESERVES | 10_000_000_000_000 (10M) | 1_000_000_000_000_000 (1B) | Initial supply for bonding pool |
+| REMAIN_TOKEN_RESERVES | 2_000_000_000_000 (2M) | 200_000_000_000_000 (200M) | Remaining token supply |
 | INIT_PLATFORM_FEE_WITHDRAW | 1_500 (15%) | 1_500 (15%) | Platform fee withdrawal percentage |
 | INIT_CREATOR_FEE_WITHDRAW | 3_000 (30%) | 3_000 (30%) | Creator fee withdrawal percentage |
 | INIT_STAKE_FEE_WITHDRAW | 3_500 (35%) | 3_500 (35%) | Staking fee withdrawal percentage |
