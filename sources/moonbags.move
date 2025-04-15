@@ -1,6 +1,7 @@
 #[allow(lint(self_transfer))]
 module moonbags::moonbags {
     use std::ascii::{Self, String};
+    use std::string;
     use std::type_name;
     use std::u64::min;
 
@@ -795,10 +796,15 @@ module moonbags::moonbags {
         let sui_amount = coin::value<SUI>(&coin_sui) as u256;
         let metadata_token = dynamic_object_field::borrow(&pool.id, COIN_METADATA_FIELD);
 
+        let icon_url = if (coin::get_icon_url<Token>(metadata_token).is_some()) {
+            coin::get_icon_url<Token>(metadata_token).extract().inner_url().to_string()
+        } else {
+            string::utf8(b"")
+        };
+
         let (position, coin_token, coin_sui) = pool_creator::create_pool_v2<Token, SUI>(
             cetus_config, cetus_pools, 200, sqrt(340282366920938463463374607431768211456 * sui_amount / token_amount),
-            coin::get_icon_url<Token>(metadata_token).extract().inner_url().to_string(), 
-            4294523696, 443600,
+            icon_url, 4294523696, 443600,
             coin_token, coin_sui, metadata_token, metadata_sui,
             true, clock, ctx
         );
