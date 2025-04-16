@@ -25,7 +25,7 @@ module moonbags::moonbags {
 
     const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
     const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
-    const VERSION: u64 = 1;
+    const VERSION: u64 = 2;
     const FEE_DENOMINATOR: u64 = 10000;
     const BURN_PROOF_FIELD: vector<u8> = b"burn_proof";
     const COIN_METADATA_FIELD: vector<u8> = b"metadata_token";
@@ -335,7 +335,7 @@ module moonbags::moonbags {
         assert!(amount_out > 0, EInvalidInput);
 
         let amount_sui_in = coin::value<SUI>(&coin_sui);
-        let virtual_remain_token_reserves = *dynamic_field::borrow<vector<u8>, u64>(&pool.id, VIRTUAL_TOKEN_RESERVES_FIELD);
+        let virtual_remain_token_reserves = get_virtual_remain_token_reserves(pool);
         let token_reserves_in_pool = pool.virtual_token_reserves - virtual_remain_token_reserves;
         let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
@@ -379,7 +379,7 @@ module moonbags::moonbags {
         assert!(amount_out > 0, EInvalidInput);
 
         let amount_sui_in = coin::value<SUI>(&coin_sui);
-        let virtual_remain_token_reserves = *dynamic_field::borrow<vector<u8>, u64>(&pool.id, VIRTUAL_TOKEN_RESERVES_FIELD);
+        let virtual_remain_token_reserves = get_virtual_remain_token_reserves(pool);
         let token_reserves_in_pool = pool.virtual_token_reserves - virtual_remain_token_reserves;
         let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
@@ -424,7 +424,7 @@ module moonbags::moonbags {
         assert!(!pool.is_completed, ECompletedPool);
         assert!(amount_out > 0, EInvalidInput);
 
-        let virtual_remain_token_reserves = *dynamic_field::borrow<vector<u8>, u64>(&pool.id, VIRTUAL_TOKEN_RESERVES_FIELD);
+        let virtual_remain_token_reserves = get_virtual_remain_token_reserves(pool);
         let token_reserves_in_pool = pool.virtual_token_reserves - virtual_remain_token_reserves;
         let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
@@ -751,6 +751,22 @@ module moonbags::moonbags {
         configuration.fee_platform_recipient = new_fee_platform_recipient;
     }
 
+    public entry fun update_initial_virtual_token_reserves(
+        _: &AdminCap,
+        configuration: &mut Configuration,
+        new_initial_virtual_token_reserves: u64,
+    ) {
+        configuration.initial_virtual_token_reserves = new_initial_virtual_token_reserves;
+    }
+
+    fun get_virtual_remain_token_reserves<Token>(pool: &Pool<Token>): u64 {
+        if (dynamic_field::exists_(&pool.id, VIRTUAL_TOKEN_RESERVES_FIELD)) {
+            *dynamic_field::borrow<vector<u8>, u64>(&pool.id, VIRTUAL_TOKEN_RESERVES_FIELD)
+        } else {
+            2000000000000 // hardcode use for v1
+        }
+    }
+
     fun transfer_pool<Token>(admin: address, pool: &mut Pool<Token>, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext) {
         pool.is_completed = true;
 
@@ -1054,7 +1070,7 @@ module moonbags::moonbags {
         assert!(amount_out > 0, EInvalidInput);
 
         let amount_sui_in = coin::value<SUI>(&coin_sui);
-        let virtual_remain_token_reserves = *dynamic_field::borrow<vector<u8>, u64>(&pool.id, VIRTUAL_TOKEN_RESERVES_FIELD);
+        let virtual_remain_token_reserves = get_virtual_remain_token_reserves(pool);
         let token_reserves_in_pool = pool.virtual_token_reserves - virtual_remain_token_reserves;
         let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
