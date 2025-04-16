@@ -8,6 +8,7 @@ module moonbags::moonbags {
     use sui::sui::SUI;
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::dynamic_object_field;
+    use sui::dynamic_field;
     use sui::event::emit;
     use sui::clock::{Clock, Self};
 
@@ -24,10 +25,11 @@ module moonbags::moonbags {
 
     const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
     const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
-    const VERSION: u64 = 1;
+    const VERSION: u64 = 2;
     const FEE_DENOMINATOR: u64 = 10000;
     const BURN_PROOF_FIELD: vector<u8> = b"burn_proof";
     const COIN_METADATA_FIELD: vector<u8> = b"metadata_token";
+    const VIRTUAL_TOKEN_RESERVES_FIELD: vector<u8> = b"virtual_token_reserves";
 
     const EInvalidInput: u64 = 1;
     const ENotEnoughThreshold: u64 = 2;
@@ -168,7 +170,7 @@ module moonbags::moonbags {
             treasury: ctx.sender(),
             fee_platform_recipient: ctx.sender(),
             platform_fee: 100, // 1%
-            initial_virtual_token_reserves: 10000000000000, // 10 million
+            initial_virtual_token_reserves: 8000000000000, // 8 million
             remain_token_reserves: 2000000000000, // 2 million
             token_decimals: 6,
             init_platform_fee_withdraw: 1500,        // 15% to platform
@@ -212,11 +214,21 @@ module moonbags::moonbags {
 
         let initial_virtual_sui_reserves = calculate_init_sui_reserves(configuration, threshold);
 
+        let actual_virtual_token_reserves = utils::as_u64(
+            utils::div(
+                utils::mul(
+                    utils::from_u64(configuration.initial_virtual_token_reserves),
+                    utils::from_u64(configuration.initial_virtual_token_reserves)
+                ),
+                utils::from_u64(configuration.initial_virtual_token_reserves - configuration.remain_token_reserves)
+            )
+        );
+
         let mut pool = Pool<Token>{
             id                          : object::new(ctx),
             real_sui_reserves           : coin::zero<SUI>(ctx),
-            real_token_reserves         : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
-            virtual_token_reserves      : configuration.initial_virtual_token_reserves,
+            real_token_reserves         : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves, ctx),
+            virtual_token_reserves      : actual_virtual_token_reserves,
             virtual_sui_reserves        : initial_virtual_sui_reserves,
             remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
             fee_recipient               : coin::zero<SUI>(ctx),
@@ -228,6 +240,17 @@ module moonbags::moonbags {
             threshold                   : threshold,
         };
 
+        // save to dynamic field due to can't change the field of obj while upgrade
+        let virtual_remain_token_reserves = utils::as_u64(
+            utils::div(
+                utils::mul(
+                    utils::from_u64(configuration.remain_token_reserves),
+                    utils::from_u64(configuration.initial_virtual_token_reserves)
+                ),
+                utils::from_u64(configuration.initial_virtual_token_reserves - configuration.remain_token_reserves)
+            )
+        );
+        dynamic_field::add(&mut pool.id,  VIRTUAL_TOKEN_RESERVES_FIELD, virtual_remain_token_reserves);
         dynamic_object_field::add(&mut pool.id, COIN_METADATA_FIELD, metadata_token);
 
         transfer::public_transfer<coin::TreasuryCap<Token>>(treasury_cap, @0x0);
@@ -312,7 +335,8 @@ module moonbags::moonbags {
         assert!(amount_out > 0, EInvalidInput);
 
         let amount_sui_in = coin::value<SUI>(&coin_sui);
-        let token_reserves_in_pool = pool.virtual_token_reserves - coin::value<Token>(&pool.remain_token_reserves);
+        let virtual_remain_token_reserves = get_virtual_remain_token_reserves(pool);
+        let token_reserves_in_pool = pool.virtual_token_reserves - virtual_remain_token_reserves;
         let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
         let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
@@ -355,7 +379,8 @@ module moonbags::moonbags {
         assert!(amount_out > 0, EInvalidInput);
 
         let amount_sui_in = coin::value<SUI>(&coin_sui);
-        let token_reserves_in_pool = pool.virtual_token_reserves - coin::value<Token>(&pool.remain_token_reserves);
+        let virtual_remain_token_reserves = get_virtual_remain_token_reserves(pool);
+        let token_reserves_in_pool = pool.virtual_token_reserves - virtual_remain_token_reserves;
         let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
         let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
@@ -399,7 +424,8 @@ module moonbags::moonbags {
         assert!(!pool.is_completed, ECompletedPool);
         assert!(amount_out > 0, EInvalidInput);
 
-        let token_reserves_in_pool = pool.virtual_token_reserves - coin::value<Token>(&pool.remain_token_reserves);
+        let virtual_remain_token_reserves = get_virtual_remain_token_reserves(pool);
+        let token_reserves_in_pool = pool.virtual_token_reserves - virtual_remain_token_reserves;
         let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
         let amount_sui_in = coin::value<SUI>(&coin_sui);
@@ -476,11 +502,21 @@ module moonbags::moonbags {
 
         let initial_virtual_sui_reserves = calculate_init_sui_reserves(configuration, threshold);
 
+        let actual_virtual_token_reserves = utils::as_u64(
+            utils::div(
+                utils::mul(
+                    utils::from_u64(configuration.initial_virtual_token_reserves),
+                    utils::from_u64(configuration.initial_virtual_token_reserves)
+                ),
+                utils::from_u64(configuration.initial_virtual_token_reserves - configuration.remain_token_reserves)
+            )
+        );
+
         let mut pool = Pool<Token>{
             id                          : object::new(ctx),
             real_sui_reserves           : coin::zero<SUI>(ctx),
-            real_token_reserves         : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves - configuration.remain_token_reserves, ctx),
-            virtual_token_reserves      : configuration.initial_virtual_token_reserves,
+            real_token_reserves         : coin::mint<Token>(&mut treasury_cap, configuration.initial_virtual_token_reserves, ctx),
+            virtual_token_reserves      : actual_virtual_token_reserves,
             virtual_sui_reserves        : initial_virtual_sui_reserves,
             remain_token_reserves       : coin::mint<Token>(&mut treasury_cap, configuration.remain_token_reserves, ctx),
             fee_recipient               : coin::zero<SUI>(ctx),
@@ -492,6 +528,17 @@ module moonbags::moonbags {
             threshold                   : threshold,
         };
 
+        // save to dynamic field due to can't change the field of obj while upgrade
+        let virtual_remain_token_reserves = utils::as_u64(
+            utils::div(
+                utils::mul(
+                    utils::from_u64(configuration.remain_token_reserves),
+                    utils::from_u64(configuration.initial_virtual_token_reserves)
+                ),
+                utils::from_u64(configuration.initial_virtual_token_reserves - configuration.remain_token_reserves)
+            )
+        );
+        dynamic_field::add(&mut pool.id,  VIRTUAL_TOKEN_RESERVES_FIELD, virtual_remain_token_reserves);
         dynamic_object_field::add(&mut pool.id, COIN_METADATA_FIELD, metadata_token);
 
         let token_address = type_name::get<Token>();
@@ -702,6 +749,22 @@ module moonbags::moonbags {
     ) {
         configuration.treasury = new_treasury;
         configuration.fee_platform_recipient = new_fee_platform_recipient;
+    }
+
+    public entry fun update_initial_virtual_token_reserves(
+        _: &AdminCap,
+        configuration: &mut Configuration,
+        new_initial_virtual_token_reserves: u64,
+    ) {
+        configuration.initial_virtual_token_reserves = new_initial_virtual_token_reserves;
+    }
+
+    fun get_virtual_remain_token_reserves<Token>(pool: &Pool<Token>): u64 {
+        if (dynamic_field::exists_(&pool.id, VIRTUAL_TOKEN_RESERVES_FIELD)) {
+            *dynamic_field::borrow<vector<u8>, u64>(&pool.id, VIRTUAL_TOKEN_RESERVES_FIELD)
+        } else {
+            2000000000000 // hardcode use for v1
+        }
     }
 
     fun transfer_pool<Token>(admin: address, pool: &mut Pool<Token>, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext) {
@@ -1007,7 +1070,8 @@ module moonbags::moonbags {
         assert!(amount_out > 0, EInvalidInput);
 
         let amount_sui_in = coin::value<SUI>(&coin_sui);
-        let token_reserves_in_pool = pool.virtual_token_reserves - coin::value<Token>(&pool.remain_token_reserves);
+        let virtual_remain_token_reserves = get_virtual_remain_token_reserves(pool);
+        let token_reserves_in_pool = pool.virtual_token_reserves - virtual_remain_token_reserves;
         let actual_amount_out = min(amount_out, token_reserves_in_pool);
 
         let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
