@@ -763,7 +763,7 @@ module moonbags::moonbags {
         if (dynamic_field::exists_(&pool.id, VIRTUAL_TOKEN_RESERVES_FIELD)) {
             *dynamic_field::borrow<vector<u8>, u64>(&pool.id, VIRTUAL_TOKEN_RESERVES_FIELD)
         } else {
-            2000000000000 // hardcode use for v1
+            coin::value(&pool.remain_token_reserves) // hardcode use for v1
         }
     }
 
