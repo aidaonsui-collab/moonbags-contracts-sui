@@ -478,16 +478,22 @@ module moonbags::moonbags {
 
         assert!(!pool.is_completed, ECompletedPool);
 
-        // handle for excess swap token reserve
         let amount_out_swap = curves::calculate_remove_liquidity_return(pool.virtual_sui_reserves, pool.virtual_token_reserves, amount_in);
         let token_reserves_in_pool = pool.virtual_token_reserves - get_virtual_remain_token_reserves(pool);
-        let actual_amount_out = min(amount_out_swap, token_reserves_in_pool);
+        
+        let (actual_amount_out, amount_in_swap) = if (amount_out_swap > token_reserves_in_pool) {
+            // When buying all remaining tokens, we need to recalculate the required SUI amount
+            let actual_out = token_reserves_in_pool;
+            let required_sui = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_out) + 1;
+            (actual_out, required_sui)
+        } else {
+            // Normal case, use the original amount_in
+            (amount_out_swap, amount_in)
+        };
 
         assert!(actual_amount_out >= amount_out_min, EInvalidInput);
 
-        let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
         let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
-
         coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui, fee, ctx));
 
         assert!(total_sui_in >= amount_in_swap + fee, EInsufficientInput);
