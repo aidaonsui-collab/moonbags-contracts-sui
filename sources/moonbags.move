@@ -1,4 +1,4 @@
-#[allow(lint(self_transfer))]
+#[allow(lint(self_transfer), implicit_const_copy)]
 module moonbags::moonbags {
     use std::ascii::{Self, String};
     use std::string;
@@ -20,16 +20,26 @@ module moonbags::moonbags {
     use cetus_clmm::pool_creator::Self;
     use cetus_clmm::config::GlobalConfig;
     use cetus_clmm::pool::{Pool as CetusPool};
+
+    use turbos_clmm::position_manager::{Positions as TurbosPositions};
+	use turbos_clmm::pool::{Pool as TurbosPool, Versioned as TurbosVersioned};
+    use turbos_clmm::position_nft::TurbosPositionNFT;
     
     use lp_burn::lp_burn::{Self, BurnManager};
 
     const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
     const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
-    const VERSION: u64 = 2;
+    const VERSION: u64 = 3;
     const FEE_DENOMINATOR: u64 = 10000;
     const BURN_PROOF_FIELD: vector<u8> = b"burn_proof";
     const COIN_METADATA_FIELD: vector<u8> = b"metadata_token";
     const VIRTUAL_TOKEN_RESERVES_FIELD: vector<u8> = b"virtual_token_reserves";
+    const BURN_PROOF_TURBOS_FIELD: vector<u8> = b"turbos_burn_proof";
+    const BONDING_DEX_FIELD : vector<u8> = b"migrate_dex";
+
+    const CETUS_DEX: u8 = 0;
+    const TURBOS_DEX: u8 = 1;
+    const BONDING_SUPPORT_DEXES: vector<u8> = vector[CETUS_DEX, TURBOS_DEX];
 
     const EInvalidInput: u64 = 1;
     const ENotEnoughThreshold: u64 = 2;
@@ -143,6 +153,13 @@ module moonbags::moonbags {
         ts: u64,
     }
 
+    public struct PoolMigratingEvent has copy, drop, store {
+        token_address: String,
+        sui_amount: u64,
+        token_amount: u64,
+        ts: u64,
+    }
+
     public struct TradedEvent has copy, drop, store {
         is_buy: bool,
         user: address,
@@ -185,10 +202,30 @@ module moonbags::moonbags {
     }
 
     public entry fun create<Token>(
+        _configuration: &mut Configuration,
+        _stake_config: &mut StakeConfig,
+        mut _treasury_cap: coin::TreasuryCap<Token>,
+        _metadata_token: CoinMetadata<Token>,
+        _threshold: Option<u64>,
+        _clock: &Clock,
+        _name: String,
+        _symbol: String,
+        _uri: String,
+        _description: String,
+        _twitter: String,
+        _telegram: String,
+        _website: String,
+        _ctx: &mut TxContext
+    ) {
+        abort 0
+    }
+
+    public entry fun create_v2<Token>(
         configuration: &mut Configuration,
         stake_config: &mut StakeConfig,
         mut treasury_cap: coin::TreasuryCap<Token>,
         metadata_token: CoinMetadata<Token>,
+        bonding_dex: u8,
         threshold: Option<u64>,
         clock: &Clock,
         name: String,
@@ -252,6 +289,9 @@ module moonbags::moonbags {
         );
         dynamic_field::add(&mut pool.id,  VIRTUAL_TOKEN_RESERVES_FIELD, virtual_remain_token_reserves);
         dynamic_object_field::add(&mut pool.id, COIN_METADATA_FIELD, metadata_token);
+
+        assert!(vector::contains(&BONDING_SUPPORT_DEXES, &bonding_dex), EInvalidInput);
+        dynamic_field::add(&mut pool.id,  BONDING_DEX_FIELD, bonding_dex);
 
         transfer::public_transfer<coin::TreasuryCap<Token>>(treasury_cap, @0x0);
 
@@ -322,7 +362,7 @@ module moonbags::moonbags {
     }
 
     fun assert_version(version: u64) {
-        assert!(version == VERSION, EWrongVersion);
+        assert!(version <= VERSION, EWrongVersion);
     }
 
     public entry fun buy_exact_out<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out: u64, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext) {
@@ -530,9 +570,35 @@ module moonbags::moonbags {
     }
 
     public entry fun create_and_first_buy<Token>(
+        _configuration: &mut Configuration,
+        _stake_config: &mut StakeConfig,
+        mut _treasury_cap: coin::TreasuryCap<Token>,
+        _coin_sui: Coin<SUI>,
+        _amount_out: u64,
+        _threshold: Option<u64>,
+        _clock: &Clock,
+        _name: String,
+        _symbol: String,
+        _uri: String,
+        _description: String,
+        _twitter: String,
+        _telegram: String,
+        _website: String,
+        _cetus_burn_manager: &mut BurnManager,
+        _cetus_pools: &mut Pools,
+        _cetus_global_config: &mut GlobalConfig,
+        _metadata_sui: &CoinMetadata<SUI>,
+        _metadata_token: CoinMetadata<Token>,
+        _ctx: &mut TxContext
+    ) {
+        abort 0
+    }
+
+    public entry fun create_and_first_buy_v2<Token>(
         configuration: &mut Configuration,
         stake_config: &mut StakeConfig,
         mut treasury_cap: coin::TreasuryCap<Token>,
+        bonding_dex: u8,
         coin_sui: Coin<SUI>,
         amount_out: u64,
         threshold: Option<u64>,
@@ -603,6 +669,9 @@ module moonbags::moonbags {
         );
         dynamic_field::add(&mut pool.id,  VIRTUAL_TOKEN_RESERVES_FIELD, virtual_remain_token_reserves);
         dynamic_object_field::add(&mut pool.id, COIN_METADATA_FIELD, metadata_token);
+
+        assert!(vector::contains(&BONDING_SUPPORT_DEXES, &bonding_dex), EInvalidInput);
+        dynamic_field::add(&mut pool.id,  BONDING_DEX_FIELD, bonding_dex);
 
         let token_address = type_name::get<Token>();
         let pool_address = type_name::get<Pool<Token>>();
@@ -849,7 +918,35 @@ module moonbags::moonbags {
         };
         emit<PoolCompletedEvent>(pool_completed_event);
 
-        init_cetus_pool<Token>(admin, coin_sui, coin_token, pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
+        emit<PoolMigratingEvent>(PoolMigratingEvent {
+            token_address   : type_name::into_string(type_name::get<Token>()),
+            sui_amount      : coin::value<SUI>(&coin_sui),
+            token_amount    : coin::value<Token>(&coin_token),
+            ts              : clock::timestamp_ms(clock),
+        });
+
+        let bonding_dex_exists = dynamic_field::exists_<vector<u8>>(&pool.id, BONDING_DEX_FIELD);
+        let bonding_dex = if (bonding_dex_exists) {
+            dynamic_field::borrow<vector<u8>, u8>(&pool.id, BONDING_DEX_FIELD)
+        } else {
+            &TURBOS_DEX
+        };
+
+        if (bonding_dex == CETUS_DEX) {
+            init_cetus_pool<Token>(
+                admin, coin_sui, coin_token,
+                pool, cetus_burn_manager, cetus_pools,
+                cetus_global_config, metadata_sui, clock, ctx
+            );
+        } else {
+            // for turbos finance
+            transfer::public_transfer<Coin<Token>>(coin_token, admin);
+            transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
+        };
+
+        // Make coin metadata token publicly accessible to anyone
+        let metadata_token = dynamic_object_field::remove<vector<u8>, CoinMetadata<Token>>(&mut pool.id, COIN_METADATA_FIELD);
+        transfer::public_freeze_object(metadata_token);
     }
 
     fun calculate_init_sui_reserves(configuration: &Configuration, threshold: u64) : u64 {
@@ -952,13 +1049,37 @@ module moonbags::moonbags {
         dynamic_object_field::add(&mut pool.id, BURN_PROOF_FIELD, burn_proof);
         transfer::public_transfer<Coin<Token>>(coin_token, admin);
         transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
+    }
 
-        // Make coin metadata token publicly accessible to anyone
-        let metadata_token = dynamic_object_field::remove<vector<u8>, CoinMetadata<Token>>(&mut pool.id, COIN_METADATA_FIELD);
-        transfer::public_freeze_object(metadata_token);
+    public fun burn_turbos_position_nft<Token ,FeeType>(
+        turbos_pool: &mut TurbosPool<Token, SUI, FeeType>,
+        bonding_curve_config: &mut Configuration,
+        positions: &mut TurbosPositions,
+        position_nft: TurbosPositionNFT,
+        versioned: &TurbosVersioned,
+        ctx: &mut TxContext
+    ) {
+        assert_version(bonding_curve_config.version);
+        
+        let token_address = type_name::get_address(&type_name::get<Token>());
+        let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut bonding_curve_config.id, token_address);
+        
+        assert!(pool.is_completed, EInvalidWithdrawPool);
+        assert!(!dynamic_field::exists_(&pool.id, BURN_PROOF_TURBOS_FIELD), EInvalidInput);
+
+        let burn_proof = turbos_clmm::position_manager::burn_position_nft_with_return_<Token, SUI, FeeType>(
+            turbos_pool,
+            positions,
+            position_nft,
+            versioned,
+            ctx
+        );
+        
+        dynamic_object_field::add(&mut pool.id, BURN_PROOF_TURBOS_FIELD, burn_proof);
     }
 
     public fun withdraw_fee_bonding_curve<Token, PlatformToken>(bonding_curve_config: &mut Configuration, stake_config: &mut StakeConfig, clock: &Clock, ctx: &mut TxContext) {
+        assert_version(bonding_curve_config.version);
         let platform_token_type_name = type_name::into_string(type_name::get<PlatformToken>());
         assert!(platform_token_type_name == bonding_curve_config.token_platform_type_name, EInsufficientInput);
 
@@ -977,6 +1098,7 @@ module moonbags::moonbags {
         clock: &Clock, 
         ctx: &mut TxContext
     ) {
+        assert_version(bonding_curve_config.version);
         let platform_token_type_name = type_name::into_string(type_name::get<PlatformToken>());
         assert!(platform_token_type_name == bonding_curve_config.token_platform_type_name, EInsufficientInput);
 
@@ -994,6 +1116,37 @@ module moonbags::moonbags {
             burn_proof,
             ctx
         );
+
+        transfer::public_transfer<Coin<Token>>(token_coin, bonding_curve_config.treasury); // token fee to address for now
+        coin::join(&mut pool.fee_recipient, sui_coin);
+        
+        distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.fee_platform_recipient, stake_config, clock, ctx);
+    }
+
+    public fun withdraw_fee_turbos<Token, PlatformToken, FeeType>(
+        bonding_curve_config: &mut Configuration,
+        stake_config: &mut StakeConfig,
+        turbos_pool: &mut TurbosPool<Token, SUI, FeeType>,
+        turbos_positions: &mut TurbosPositions,  
+        max_amount_token_a: u64,                        
+        max_amount_token_b: u64,
+        deadline: u64,
+        clock: &Clock,
+        versioned: &TurbosVersioned,
+        ctx: &mut TxContext
+    ) {
+        assert_version(bonding_curve_config.version);
+        let platform_token_type_name = type_name::into_string(type_name::get<PlatformToken>());
+        assert!(platform_token_type_name == bonding_curve_config.token_platform_type_name, EInsufficientInput);
+
+        let token_address = type_name::get_address(&type_name::get<Token>());
+        let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut bonding_curve_config.id, token_address);
+
+        assert!(pool.is_completed, EInvalidWithdrawPool);
+        assert!(dynamic_object_field::exists_(&pool.id, BURN_PROOF_TURBOS_FIELD), EInvalidWithdrawPool);
+
+        let burn_nft = dynamic_object_field::borrow_mut(&mut pool.id, BURN_PROOF_TURBOS_FIELD);
+        let (token_coin, sui_coin) = turbos_clmm::position_manager::burn_nft_collect_fee_with_return_(turbos_pool, turbos_positions, burn_nft, max_amount_token_a, max_amount_token_b, deadline, clock, versioned, ctx);
 
         transfer::public_transfer<Coin<Token>>(token_coin, bonding_curve_config.treasury); // token fee to address for now
         coin::join(&mut pool.fee_recipient, sui_coin);

@@ -3,9 +3,10 @@ name = "moonbags"
 edition = "2024.beta"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet" }
 CetusClmm = { local = "./externals/cetus_clmm" }
 LpBurn = { local = "./externals/lp_burn" }
+TurbosCLMM = { local = "./externals/turbos_clmm" }
 
 [addresses]
 moonbags = "0x0"

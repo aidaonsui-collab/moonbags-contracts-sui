@@ -19,13 +19,14 @@ const createPool = async (tokenAddress: string, treasuryCapObjId: string) => {
 
     // Move call to create the pool
     tx.moveCall({
-      target: `${packageAddress}::moonbags::create`,
+      target: `${packageAddress}::moonbags::create_v2`,
       typeArguments: [tokenAddress],
       arguments: [
         configuration,
         stakeConfig,
         treasuryCap,
         tx.object(tokenMetadataObj?.id!),
+        tx.pure(0),
         tx.pure([2_000_000_000]), // max_supply
         clock,
         tx.pure("name"), // name
