@@ -157,6 +157,7 @@ module moonbags::moonbags {
         token_address: String,
         sui_amount: u64,
         token_amount: u64,
+        bonding_dex: u8,
         ts: u64,
     }
 
@@ -918,19 +919,20 @@ module moonbags::moonbags {
         };
         emit<PoolCompletedEvent>(pool_completed_event);
 
-        emit<PoolMigratingEvent>(PoolMigratingEvent {
-            token_address   : type_name::into_string(type_name::get<Token>()),
-            sui_amount      : coin::value<SUI>(&coin_sui),
-            token_amount    : coin::value<Token>(&coin_token),
-            ts              : clock::timestamp_ms(clock),
-        });
-
         let bonding_dex_exists = dynamic_field::exists_<vector<u8>>(&pool.id, BONDING_DEX_FIELD);
         let bonding_dex = if (bonding_dex_exists) {
             dynamic_field::borrow<vector<u8>, u8>(&pool.id, BONDING_DEX_FIELD)
         } else {
             &TURBOS_DEX
         };
+
+        emit<PoolMigratingEvent>(PoolMigratingEvent {
+            token_address   : type_name::into_string(type_name::get<Token>()),
+            sui_amount      : coin::value<SUI>(&coin_sui),
+            token_amount    : coin::value<Token>(&coin_token),
+            bonding_dex     : *bonding_dex,
+            ts              : clock::timestamp_ms(clock),
+        });
 
         if (bonding_dex == CETUS_DEX) {
             init_cetus_pool<Token>(
@@ -1051,8 +1053,8 @@ module moonbags::moonbags {
         transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
     }
 
-    public fun burn_turbos_position_nft<Token ,FeeType>(
-        turbos_pool: &mut TurbosPool<Token, SUI, FeeType>,
+    public fun burn_turbos_position_nft<Token, CoinTypeA, CoinTypeB, FeeType>(
+        turbos_pool: &mut TurbosPool<CoinTypeA, CoinTypeB, FeeType>,
         bonding_curve_config: &mut Configuration,
         positions: &mut TurbosPositions,
         position_nft: TurbosPositionNFT,
@@ -1061,13 +1063,25 @@ module moonbags::moonbags {
     ) {
         assert_version(bonding_curve_config.version);
         
+        // Validate that one coin type is Token and the other is SUI
+        let token_type = type_name::into_string(type_name::get<Token>());
+        let coinA_type = type_name::into_string(type_name::get<CoinTypeA>());
+        let coinB_type = type_name::into_string(type_name::get<CoinTypeB>());
+        let sui_type = type_name::into_string(type_name::get<SUI>());
+        
+        assert!(
+            (coinA_type == token_type && coinB_type == sui_type) || 
+            (coinA_type == sui_type && coinB_type == token_type),
+            EInvalidInput
+        );
+        
         let token_address = type_name::get_address(&type_name::get<Token>());
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut bonding_curve_config.id, token_address);
         
         assert!(pool.is_completed, EInvalidWithdrawPool);
         assert!(!dynamic_field::exists_(&pool.id, BURN_PROOF_TURBOS_FIELD), EInvalidInput);
 
-        let burn_proof = turbos_clmm::position_manager::burn_position_nft_with_return_<Token, SUI, FeeType>(
+        let burn_proof = turbos_clmm::position_manager::burn_position_nft_with_return_<CoinTypeA, CoinTypeB, FeeType>(
             turbos_pool,
             positions,
             position_nft,
@@ -1123,7 +1137,7 @@ module moonbags::moonbags {
         distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.fee_platform_recipient, stake_config, clock, ctx);
     }
 
-    public fun withdraw_fee_turbos<Token, PlatformToken, FeeType>(
+    public fun withdraw_fee_turbos_sui_after<Token, PlatformToken, FeeType>(
         bonding_curve_config: &mut Configuration,
         stake_config: &mut StakeConfig,
         turbos_pool: &mut TurbosPool<Token, SUI, FeeType>,
@@ -1147,6 +1161,37 @@ module moonbags::moonbags {
 
         let burn_nft = dynamic_object_field::borrow_mut(&mut pool.id, BURN_PROOF_TURBOS_FIELD);
         let (token_coin, sui_coin) = turbos_clmm::position_manager::burn_nft_collect_fee_with_return_(turbos_pool, turbos_positions, burn_nft, max_amount_token_a, max_amount_token_b, deadline, clock, versioned, ctx);
+
+        transfer::public_transfer<Coin<Token>>(token_coin, bonding_curve_config.treasury); // token fee to address for now
+        coin::join(&mut pool.fee_recipient, sui_coin);
+        
+        distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.fee_platform_recipient, stake_config, clock, ctx);
+    }
+
+    public fun withdraw_fee_turbos_sui_first<Token, PlatformToken, FeeType>(
+        bonding_curve_config: &mut Configuration,
+        stake_config: &mut StakeConfig,
+        turbos_pool: &mut TurbosPool<SUI, Token, FeeType>,
+        turbos_positions: &mut TurbosPositions,  
+        max_amount_token_a: u64,                        
+        max_amount_token_b: u64,
+        deadline: u64,
+        clock: &Clock,
+        versioned: &TurbosVersioned,
+        ctx: &mut TxContext
+    ) {
+        assert_version(bonding_curve_config.version);
+        let platform_token_type_name = type_name::into_string(type_name::get<PlatformToken>());
+        assert!(platform_token_type_name == bonding_curve_config.token_platform_type_name, EInsufficientInput);
+
+        let token_address = type_name::get_address(&type_name::get<Token>());
+        let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut bonding_curve_config.id, token_address);
+
+        assert!(pool.is_completed, EInvalidWithdrawPool);
+        assert!(dynamic_object_field::exists_(&pool.id, BURN_PROOF_TURBOS_FIELD), EInvalidWithdrawPool);
+
+        let burn_nft = dynamic_object_field::borrow_mut(&mut pool.id, BURN_PROOF_TURBOS_FIELD);
+        let (sui_coin, token_coin) = turbos_clmm::position_manager::burn_nft_collect_fee_with_return_(turbos_pool, turbos_positions, burn_nft, max_amount_token_a, max_amount_token_b, deadline, clock, versioned, ctx);
 
         transfer::public_transfer<Coin<Token>>(token_coin, bonding_curve_config.treasury); // token fee to address for now
         coin::join(&mut pool.fee_recipient, sui_coin);
