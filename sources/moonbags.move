@@ -141,6 +141,31 @@ module moonbags::moonbags {
         ts: u64,
     }
 
+    public struct CreatedEventV2 has copy, drop, store {
+        name: String,
+        symbol: String,
+        uri: String,
+        description: String,
+        twitter: String,
+        telegram: String,
+        website: String,
+        token_address: String,
+        bonding_curve: String,
+        pool_id: ID,
+        created_by: address,
+        virtual_sui_reserves: u64,
+        virtual_token_reserves: u64,
+        real_sui_reserves: u64,
+        real_token_reserves: u64,
+        platform_fee_withdraw: u16,
+        creator_fee_withdraw: u16,
+        stake_fee_withdraw: u16,
+        platform_stake_fee_withdraw: u16,
+        threshold: u64,
+        bonding_dex: u8,
+        ts: u64,
+    }
+
     public struct OwnershipTransferredEvent has copy, drop, store {
         old_admin: address,
         new_admin: address,
@@ -299,7 +324,7 @@ module moonbags::moonbags {
         let token_address = type_name::get<Token>();
         let pool_address = type_name::get<Pool<Token>>();
 
-        let created_event = CreatedEvent{
+        let created_event = CreatedEventV2 {
             name                        : name,
             symbol                      : symbol,
             uri                         : uri,
@@ -319,11 +344,12 @@ module moonbags::moonbags {
             creator_fee_withdraw        : pool.creator_fee_withdraw,
             stake_fee_withdraw          : pool.stake_fee_withdraw,
             platform_stake_fee_withdraw : pool.platform_stake_fee_withdraw,
+            bonding_dex                 : bonding_dex,
             threshold                   : threshold,
             ts                          : clock::timestamp_ms(clock),
         };
         dynamic_object_field::add<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address), pool);
-        emit<CreatedEvent>(created_event);
+        emit<CreatedEventV2>(created_event);
 
         moonbags_stake::initialize_staking_pool<Token>(stake_config, clock, ctx);
         moonbags_stake::initialize_creator_pool<Token>(stake_config, ctx.sender(), clock, ctx);
@@ -676,7 +702,7 @@ module moonbags::moonbags {
 
         let token_address = type_name::get<Token>();
         let pool_address = type_name::get<Pool<Token>>();
-        let created_event = CreatedEvent {
+        let created_event = CreatedEventV2 {
             name                        : name,
             symbol                      : symbol,
             uri                         : uri,
@@ -696,6 +722,7 @@ module moonbags::moonbags {
             creator_fee_withdraw        : pool.creator_fee_withdraw,
             stake_fee_withdraw          : pool.stake_fee_withdraw,
             platform_stake_fee_withdraw : pool.platform_stake_fee_withdraw,
+            bonding_dex                 : bonding_dex,
             threshold                   : threshold,
             ts                          : clock::timestamp_ms(clock),
         };
@@ -709,7 +736,7 @@ module moonbags::moonbags {
         };
 
         dynamic_object_field::add<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address), pool);
-        emit<CreatedEvent>(created_event);
+        emit<CreatedEventV2>(created_event);
 
         moonbags_stake::initialize_staking_pool<Token>(stake_config, clock, ctx);
         moonbags_stake::initialize_creator_pool<Token>(stake_config, ctx.sender(), clock, ctx);
