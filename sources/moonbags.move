@@ -277,20 +277,20 @@ module moonbags::moonbags {
     }
 
     public entry fun create<Token>(
-        _configuration: &mut Configuration,
-        _stake_config: &mut StakeConfig,
-        mut _treasury_cap: coin::TreasuryCap<Token>,
-        _metadata_token: CoinMetadata<Token>,
-        _threshold: Option<u64>,
-        _clock: &Clock,
-        _name: String,
-        _symbol: String,
-        _uri: String,
-        _description: String,
-        _twitter: String,
-        _telegram: String,
-        _website: String,
-        _ctx: &mut TxContext
+        configuration: &mut Configuration,
+        stake_config: &mut StakeConfig,
+        mut treasury_cap: coin::TreasuryCap<Token>,
+        metadata_token: CoinMetadata<Token>,
+        threshold: Option<u64>,
+        clock: &Clock,
+        name: String,
+        symbol: String,
+        uri: String,
+        description: String,
+        twitter: String,
+        telegram: String,
+        website: String,
+        ctx: &mut TxContext
     ) {
         abort 0
     }
@@ -646,26 +646,26 @@ module moonbags::moonbags {
     }
 
     public entry fun create_and_first_buy<Token>(
-        _configuration: &mut Configuration,
-        _stake_config: &mut StakeConfig,
-        mut _treasury_cap: coin::TreasuryCap<Token>,
-        _coin_sui: Coin<SUI>,
-        _amount_out: u64,
-        _threshold: Option<u64>,
-        _clock: &Clock,
-        _name: String,
-        _symbol: String,
-        _uri: String,
-        _description: String,
-        _twitter: String,
-        _telegram: String,
-        _website: String,
-        _cetus_burn_manager: &mut BurnManager,
-        _cetus_pools: &mut Pools,
-        _cetus_global_config: &mut GlobalConfig,
-        _metadata_sui: &CoinMetadata<SUI>,
-        _metadata_token: CoinMetadata<Token>,
-        _ctx: &mut TxContext
+        configuration: &mut Configuration,
+        stake_config: &mut StakeConfig,
+        mut treasury_cap: coin::TreasuryCap<Token>,
+        coin_sui: Coin<SUI>,
+        amount_out: u64,
+        threshold: Option<u64>,
+        clock: &Clock,
+        name: String,
+        symbol: String,
+        uri: String,
+        description: String,
+        twitter: String,
+        telegram: String,
+        website: String,
+        cetus_burn_manager: &mut BurnManager,
+        cetus_pools: &mut Pools,
+        cetus_global_config: &mut GlobalConfig,
+        metadata_sui: &CoinMetadata<SUI>,
+        metadata_token: CoinMetadata<Token>,
+        ctx: &mut TxContext
     ) {
         abort 0
     }
