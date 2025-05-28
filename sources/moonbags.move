@@ -117,6 +117,28 @@ module moonbags::moonbags {
         ts: u64,
     }
 
+    public struct ConfigChangedEventV2 has copy, drop, store {
+        old_platform_fee: u64,
+        new_platform_fee: u64,
+        old_initial_virtual_token_reserves: u64,
+        new_initial_virtual_token_reserves: u64,
+        old_remain_token_reserves: u64,
+        new_remain_token_reserves: u64,
+        old_token_decimals: u8,
+        new_token_decimals: u8,
+        old_init_platform_fee_withdraw: u16,
+        new_init_platform_fee_withdraw: u16,
+        old_init_creator_fee_withdraw: u16,
+        new_init_creator_fee_withdraw: u16,
+        old_init_stake_fee_withdraw: u16,
+        new_init_stake_fee_withdraw: u16,
+        old_init_platform_stake_fee_withdraw: u16,
+        new_init_platform_stake_fee_withdraw: u16,
+        old_token_platform_type_name: String,
+        new_token_platform_type_name: String,
+        ts: u64,
+    }
+
     public struct CreatedEvent has copy, drop, store {
         name: String,
         symbol: String,
@@ -172,7 +194,19 @@ module moonbags::moonbags {
         ts: u64,
     }
 
+    public struct OwnershipTransferredEventV2 has copy, drop, store {
+        old_admin: address,
+        new_admin: address,
+        ts: u64,
+    }
+
     public struct PoolCompletedEvent has copy, drop, store {
+        token_address: String,
+        lp: String,
+        ts: u64,
+    }
+
+    public struct PoolCompletedEventV2 has copy, drop, store {
         token_address: String,
         lp: String,
         ts: u64,
@@ -187,6 +221,21 @@ module moonbags::moonbags {
     }
 
     public struct TradedEvent has copy, drop, store {
+        is_buy: bool,
+        user: address,
+        token_address: String,
+        sui_amount: u64,
+        token_amount: u64,
+        virtual_sui_reserves: u64,
+        virtual_token_reserves: u64,
+        real_sui_reserves: u64,
+        real_token_reserves: u64,
+        pool_id: ID,
+        fee: u64,
+        ts: u64,
+    }
+
+    public struct TradedEventV2 has copy, drop, store {
         is_buy: bool,
         user: address,
         token_address: String,
@@ -420,7 +469,7 @@ module moonbags::moonbags {
         transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
 
-        let traded_event = TradedEvent{
+        let traded_event = TradedEventV2{
             is_buy                 : true,
             user                   : ctx.sender(),
             token_address          : type_name::into_string(token_address),
@@ -434,7 +483,7 @@ module moonbags::moonbags {
             fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
-        emit<TradedEvent>(traded_event);
+        emit<TradedEventV2>(traded_event);
 
         if (actual_amount_out == token_reserves_in_pool) {
             transfer_pool<Token>(configuration.admin, pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
@@ -469,7 +518,7 @@ module moonbags::moonbags {
         transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
 
-        let traded_event = TradedEvent{
+        let traded_event = TradedEventV2{
             is_buy                 : true,
             user                   : ctx.sender(),
             token_address          : type_name::into_string(type_name::get<Token>()),
@@ -483,7 +532,7 @@ module moonbags::moonbags {
             fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
-        emit<TradedEvent>(traded_event);
+        emit<TradedEventV2>(traded_event);
 
         if (token_reserves_in_pool == actual_amount_out) {
             transfer_pool<Token>(admin, pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
@@ -512,7 +561,7 @@ module moonbags::moonbags {
 
         pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
 
-        let traded_event = TradedEvent{
+        let traded_event = TradedEventV2{
             is_buy                 : true,
             user                   : ctx.sender(),
             token_address          : type_name::into_string(token_address),
@@ -526,7 +575,7 @@ module moonbags::moonbags {
             fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
-        emit<TradedEvent>(traded_event);
+        emit<TradedEventV2>(traded_event);
 
         if (token_reserves_in_pool == actual_amount_out) {
             transfer_pool<Token>(configuration.admin, pool, cetus_burn_manager, cetus_pools, cetus_global_config , metadata_sui, clock, ctx);
@@ -569,7 +618,7 @@ module moonbags::moonbags {
 
         pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
 
-        let traded_event = TradedEvent{
+        let traded_event = TradedEventV2{
             is_buy                 : true,
             user                   : ctx.sender(),
             token_address          : type_name::into_string(token_address),
@@ -583,7 +632,7 @@ module moonbags::moonbags {
             fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
-        emit<TradedEvent>(traded_event);
+        emit<TradedEventV2>(traded_event);
 
         if (actual_amount_out == token_reserves_in_pool) {
             transfer_pool<Token>(configuration.admin, pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
@@ -770,12 +819,12 @@ module moonbags::moonbags {
         };
         transfer::public_transfer<Coin<SUI>>(real_sui_coin, ctx.sender());
         transfer::public_transfer<Coin<Token>>(real_token_coin, ctx.sender());
-        let pool_completed_event = PoolCompletedEvent{
+        let pool_completed_event = PoolCompletedEventV2{
             token_address : type_name::into_string(type_name::get<Token>()),
             lp            : ascii::string(b"0x0"),
             ts            : clock::timestamp_ms(clock),
         };
-        emit<PoolCompletedEvent>(pool_completed_event);
+        emit<PoolCompletedEventV2>(pool_completed_event);
     }
 
     public fun estimate_amount_out<Token>(configuration: &mut Configuration, amount_sui_in: u64, amount_token_in: u64) : (u64, u64) {
@@ -822,7 +871,7 @@ module moonbags::moonbags {
         transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
 
-        let traded_event = TradedEvent{
+        let traded_event = TradedEventV2{
             is_buy                 : false,
             user                   : ctx.sender(),
             token_address          : type_name::into_string(token_address),
@@ -836,7 +885,7 @@ module moonbags::moonbags {
             fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
-        emit<TradedEvent>(traded_event);
+        emit<TradedEventV2>(traded_event);
     }
 
     public fun sell_returns<Token>(configuration: &mut Configuration, coin_token: Coin<Token>, amount_out_min: u64, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
@@ -859,7 +908,7 @@ module moonbags::moonbags {
 
         coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui_out, fee, ctx));
 
-        let traded_event = TradedEvent{
+        let traded_event = TradedEventV2{
             is_buy                 : false,
             user                   : ctx.sender(),
             token_address          : type_name::into_string(token_address),
@@ -873,7 +922,7 @@ module moonbags::moonbags {
             fee                    : fee,
             ts                     : clock::timestamp_ms(clock),
         };
-        emit<TradedEvent>(traded_event);
+        emit<TradedEventV2>(traded_event);
         (coin_sui_out, coin_token_out)
     }
 
@@ -893,12 +942,12 @@ module moonbags::moonbags {
         configuration.admin = new_admin;
         transfer::transfer(admin_cap, new_admin);
 
-        let ownership_transferred_event = OwnershipTransferredEvent{
+        let ownership_transferred_event = OwnershipTransferredEventV2 {
             old_admin : ctx.sender(),
             new_admin : new_admin,
             ts        : clock::timestamp_ms(clock),
         };
-        emit<OwnershipTransferredEvent>(ownership_transferred_event);
+        emit<OwnershipTransferredEventV2>(ownership_transferred_event);
     }
 
     public entry fun update_fee_recipients(
@@ -939,12 +988,12 @@ module moonbags::moonbags {
 
         let coin_sui = coin::split<SUI>(&mut pool.real_sui_reserves, coin::value<SUI>(real_sui_reserves), ctx);
 
-        let pool_completed_event = PoolCompletedEvent{
+        let pool_completed_event = PoolCompletedEventV2 {
             token_address : type_name::into_string(type_name::get<Token>()),
             lp            : ascii::string(b"0x0"),
             ts            : clock::timestamp_ms(clock),
         };
-        emit<PoolCompletedEvent>(pool_completed_event);
+        emit<PoolCompletedEventV2>(pool_completed_event);
 
         let bonding_dex_exists = dynamic_field::exists_<vector<u8>>(&pool.id, BONDING_DEX_FIELD);
         let bonding_dex = if (bonding_dex_exists) {
@@ -1011,7 +1060,7 @@ module moonbags::moonbags {
     ) {
         assert!((new_init_platform_fee_withdraw + new_init_creator_fee_withdraw + new_init_stake_fee_withdraw + new_init_platform_stake_fee_withdraw) as u64 <= FEE_DENOMINATOR, EInvalidInput);
 
-        let config_changed_event = ConfigChangedEvent {
+        let config_changed_event = ConfigChangedEventV2 {
             old_platform_fee                        : configuration.platform_fee,
             new_platform_fee                        : new_platform_fee,
             old_initial_virtual_token_reserves      : configuration.initial_virtual_token_reserves,
@@ -1043,7 +1092,7 @@ module moonbags::moonbags {
         configuration.init_platform_stake_fee_withdraw = new_init_platform_stake_fee_withdraw;
         configuration.token_platform_type_name = new_token_platform_type_name;
 
-        emit<ConfigChangedEvent>(config_changed_event);
+        emit<ConfigChangedEventV2>(config_changed_event);
     }
 
     public entry fun update_threshold_config(_: &AdminCap, threshold_config: &mut ThresholdConfig, new_threshold: u64) {
