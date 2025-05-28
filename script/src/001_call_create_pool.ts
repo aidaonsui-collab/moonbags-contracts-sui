@@ -26,7 +26,7 @@ const createPool = async (tokenAddress: string, treasuryCapObjId: string) => {
         stakeConfig,
         treasuryCap,
         tx.object(tokenMetadataObj?.id!),
-        tx.pure(0),
+        tx.pure(1),
         tx.pure([2_000_000_000]), // max_supply
         clock,
         tx.pure("name"), // name
