@@ -117,28 +117,6 @@ module moonbags::moonbags {
         ts: u64,
     }
 
-    public struct ConfigChangedEventV2 has copy, drop, store {
-        old_platform_fee: u64,
-        new_platform_fee: u64,
-        old_initial_virtual_token_reserves: u64,
-        new_initial_virtual_token_reserves: u64,
-        old_remain_token_reserves: u64,
-        new_remain_token_reserves: u64,
-        old_token_decimals: u8,
-        new_token_decimals: u8,
-        old_init_platform_fee_withdraw: u16,
-        new_init_platform_fee_withdraw: u16,
-        old_init_creator_fee_withdraw: u16,
-        new_init_creator_fee_withdraw: u16,
-        old_init_stake_fee_withdraw: u16,
-        new_init_stake_fee_withdraw: u16,
-        old_init_platform_stake_fee_withdraw: u16,
-        new_init_platform_stake_fee_withdraw: u16,
-        old_token_platform_type_name: String,
-        new_token_platform_type_name: String,
-        ts: u64,
-    }
-
     public struct CreatedEvent has copy, drop, store {
         name: String,
         symbol: String,
@@ -160,6 +138,55 @@ module moonbags::moonbags {
         stake_fee_withdraw: u16,
         platform_stake_fee_withdraw: u16,
         threshold: u64,
+        ts: u64,
+    }
+
+    public struct OwnershipTransferredEvent has copy, drop, store {
+        old_admin: address,
+        new_admin: address,
+        ts: u64,
+    }
+
+    public struct PoolCompletedEvent has copy, drop, store {
+        token_address: String,
+        lp: String,
+        ts: u64,
+    }
+
+    public struct TradedEvent has copy, drop, store {
+        is_buy: bool,
+        user: address,
+        token_address: String,
+        sui_amount: u64,
+        token_amount: u64,
+        virtual_sui_reserves: u64,
+        virtual_token_reserves: u64,
+        real_sui_reserves: u64,
+        real_token_reserves: u64,
+        pool_id: ID,
+        fee: u64,
+        ts: u64,
+    }
+
+    public struct ConfigChangedEventV2 has copy, drop, store {
+        old_platform_fee: u64,
+        new_platform_fee: u64,
+        old_initial_virtual_token_reserves: u64,
+        new_initial_virtual_token_reserves: u64,
+        old_remain_token_reserves: u64,
+        new_remain_token_reserves: u64,
+        old_token_decimals: u8,
+        new_token_decimals: u8,
+        old_init_platform_fee_withdraw: u16,
+        new_init_platform_fee_withdraw: u16,
+        old_init_creator_fee_withdraw: u16,
+        new_init_creator_fee_withdraw: u16,
+        old_init_stake_fee_withdraw: u16,
+        new_init_stake_fee_withdraw: u16,
+        old_init_platform_stake_fee_withdraw: u16,
+        new_init_platform_stake_fee_withdraw: u16,
+        old_token_platform_type_name: String,
+        new_token_platform_type_name: String,
         ts: u64,
     }
 
@@ -188,21 +215,9 @@ module moonbags::moonbags {
         ts: u64,
     }
 
-    public struct OwnershipTransferredEvent has copy, drop, store {
-        old_admin: address,
-        new_admin: address,
-        ts: u64,
-    }
-
     public struct OwnershipTransferredEventV2 has copy, drop, store {
         old_admin: address,
         new_admin: address,
-        ts: u64,
-    }
-
-    public struct PoolCompletedEvent has copy, drop, store {
-        token_address: String,
-        lp: String,
         ts: u64,
     }
 
@@ -217,21 +232,6 @@ module moonbags::moonbags {
         sui_amount: u64,
         token_amount: u64,
         bonding_dex: u8,
-        ts: u64,
-    }
-
-    public struct TradedEvent has copy, drop, store {
-        is_buy: bool,
-        user: address,
-        token_address: String,
-        sui_amount: u64,
-        token_amount: u64,
-        virtual_sui_reserves: u64,
-        virtual_token_reserves: u64,
-        real_sui_reserves: u64,
-        real_token_reserves: u64,
-        pool_id: ID,
-        fee: u64,
         ts: u64,
     }
 
