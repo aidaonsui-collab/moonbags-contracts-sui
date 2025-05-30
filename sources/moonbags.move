@@ -1137,6 +1137,7 @@ module moonbags::moonbags {
         versioned: &TurbosVersioned,
         ctx: &mut TxContext
     ) {
+        assert!(ctx.sender() == bonding_curve_config.admin, EInvalidInput);
         assert_version(bonding_curve_config.version);
         
         // Validate that one coin type is Token and the other is SUI

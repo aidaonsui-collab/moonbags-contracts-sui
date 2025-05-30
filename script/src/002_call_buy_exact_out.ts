@@ -55,7 +55,7 @@ const run = async () => {
     (tokenAddress) => {
       rl.question("Enter amount of SUI to spend: ", (suiAmountStr) => {
         rl.question("Enter amount of tokens to receive: ", (tokenAmountStr) => {
-          buy(tokenAddress, parseInt(suiAmountStr), parseInt(tokenAmountStr));
+          buy(tokenAddress, parseFloat(suiAmountStr), parseInt(tokenAmountStr));
           rl.close();
         });
       });
