@@ -41,6 +41,8 @@ module moonbags::moonbags {
     const TURBOS_DEX: u8 = 1;
     const BONDING_SUPPORT_DEXES: vector<u8> = vector[CETUS_DEX, TURBOS_DEX];
 
+    const BONDING_DEPLOYER: address = @0x0db7989b98d681455f424035e3f01c02e27f738fdd6634ef34dedf576a9d8cea;
+
     const EInvalidInput: u64 = 1;
     const ENotEnoughThreshold: u64 = 2;
     const EWrongVersion: u64 = 3;
@@ -1018,8 +1020,8 @@ module moonbags::moonbags {
             );
         } else {
             // for turbos finance
-            transfer::public_transfer<Coin<Token>>(coin_token, admin);
-            transfer::public_transfer<Coin<SUI>>(coin_sui, admin);
+            transfer::public_transfer<Coin<Token>>(coin_token, BONDING_DEPLOYER);
+            transfer::public_transfer<Coin<SUI>>(coin_sui, BONDING_DEPLOYER);
         };
 
         // Make coin metadata token publicly accessible to anyone
@@ -1137,7 +1139,7 @@ module moonbags::moonbags {
         versioned: &TurbosVersioned,
         ctx: &mut TxContext
     ) {
-        assert!(ctx.sender() == bonding_curve_config.admin, EInvalidInput);
+        assert!(ctx.sender() == BONDING_DEPLOYER, EInvalidInput);
         assert_version(bonding_curve_config.version);
         
         // Validate that one coin type is Token and the other is SUI
