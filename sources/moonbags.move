@@ -26,6 +26,7 @@ module moonbags::moonbags {
     use turbos_clmm::position_nft::TurbosPositionNFT;
     
     use lp_burn::lp_burn::{Self, BurnManager};
+    use turbos_clmm::position_manager::TurbosPositionBurnNFT;
 
     const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
     const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
@@ -1158,7 +1159,12 @@ module moonbags::moonbags {
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut bonding_curve_config.id, token_address);
         
         assert!(pool.is_completed, EInvalidWithdrawPool);
-        assert!(!dynamic_field::exists_(&pool.id, BURN_PROOF_TURBOS_FIELD), EInvalidInput);
+
+        // Remove the existing burn proof if it exists
+        if (dynamic_field::exists_(&pool.id, BURN_PROOF_TURBOS_FIELD)) {
+            let old_burn_proof = dynamic_field::remove<vector<u8>, TurbosPositionBurnNFT>(&mut pool.id, BURN_PROOF_TURBOS_FIELD);
+            transfer::public_transfer(old_burn_proof, ctx.sender());
+        };
 
         let burn_proof = turbos_clmm::position_manager::burn_position_nft_with_return_<CoinTypeA, CoinTypeB, FeeType>(
             turbos_pool,
