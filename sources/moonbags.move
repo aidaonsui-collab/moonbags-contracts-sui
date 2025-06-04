@@ -1161,8 +1161,8 @@ module moonbags::moonbags {
         assert!(pool.is_completed, EInvalidWithdrawPool);
 
         // Remove the existing burn proof if it exists
-        if (dynamic_field::exists_(&pool.id, BURN_PROOF_TURBOS_FIELD)) {
-            let old_burn_proof = dynamic_field::remove<vector<u8>, TurbosPositionBurnNFT>(&mut pool.id, BURN_PROOF_TURBOS_FIELD);
+        if (dynamic_object_field::exists_(&pool.id, BURN_PROOF_TURBOS_FIELD)) {
+            let old_burn_proof = dynamic_object_field::remove<vector<u8>, TurbosPositionBurnNFT>(&mut pool.id, BURN_PROOF_TURBOS_FIELD);
             transfer::public_transfer(old_burn_proof, ctx.sender());
         };
 
