@@ -15,6 +15,7 @@ module moonbags::moonbags {
     use moonbags::curves;
     use moonbags::utils;
     use moonbags::moonbags_stake::{Self, Configuration as StakeConfig};
+    use moonbags::moonbags_token_lock::{Self, Configuration as TokenLockConfig};
 
     use cetus_clmm::factory::Pools;
     use cetus_clmm::pool_creator::Self;
@@ -499,7 +500,7 @@ module moonbags::moonbags {
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
     }
 
-    fun buy_direct<Token>(admin: address, mut coin_sui: Coin<SUI>, pool: &mut Pool<Token>, amount_out: u64, platform_fee: u64, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext) {
+    fun buy_direct<Token>(admin: address, mut coin_sui: Coin<SUI>, pool: &mut Pool<Token>, amount_out: u64, platform_fee: u64, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, token_lock_config: &TokenLockConfig, locking_time_ms: u64, clock: &Clock, ctx: &mut TxContext) {
         assert!(!pool.is_completed, ECompletedPool);
         assert!(amount_out > 0, EInvalidInput);
 
@@ -518,9 +519,6 @@ module moonbags::moonbags {
 
         pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
 
-        transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
-        transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
-
         let traded_event = TradedEventV2{
             is_buy                 : true,
             user                   : ctx.sender(),
@@ -536,6 +534,11 @@ module moonbags::moonbags {
             ts                     : clock::timestamp_ms(clock),
         };
         emit<TradedEventV2>(traded_event);
+
+        transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
+        let amount_coin_token_out = coin::value<Token>(&coin_token_out);
+        let end_time = clock::timestamp_ms(clock) + locking_time_ms;
+        moonbags_token_lock::create_lock(token_lock_config, coin_token_out, ctx.sender(), amount_coin_token_out, end_time, clock, ctx);
 
         if (token_reserves_in_pool == actual_amount_out) {
             transfer_pool<Token>(admin, pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
@@ -696,6 +699,34 @@ module moonbags::moonbags {
         metadata_token: CoinMetadata<Token>,
         ctx: &mut TxContext
     ) {
+        abort 0
+    }
+
+    public entry fun create_and_first_buy_v3<Token>(
+        configuration: &mut Configuration,
+        stake_config: &mut StakeConfig,
+        token_lock_config: &TokenLockConfig,
+        mut treasury_cap: coin::TreasuryCap<Token>,
+        bonding_dex: u8,
+        coin_sui: Coin<SUI>,
+        amount_out: u64,
+        threshold: Option<u64>,
+        locking_time_ms: u64,
+        clock: &Clock,
+        name: String,
+        symbol: String,
+        uri: String,
+        description: String,
+        twitter: String,
+        telegram: String,
+        website: String,
+        cetus_burn_manager: &mut BurnManager,
+        cetus_pools: &mut Pools,
+        cetus_global_config: &mut GlobalConfig,
+        metadata_sui: &CoinMetadata<SUI>,
+        metadata_token: CoinMetadata<Token>,
+        ctx: &mut TxContext
+    ) {
         assert!(ascii::length(&uri) <= 300, EInvalidInput);
         assert!(ascii::length(&description) <= 1000, EInvalidInput);
         assert!(ascii::length(&twitter) <= 500, EInvalidInput);
@@ -707,6 +738,9 @@ module moonbags::moonbags {
 
         let threshold = option::get_with_default(&threshold, DEFAULT_THRESHOLD);
         assert!(threshold >= MINIMUM_THRESHOLD, EInvalidInput);
+
+        let one_hour_in_milliseconds = 3_600_000;
+        assert!(locking_time_ms >= one_hour_in_milliseconds, EInvalidInput);
 
         let initial_virtual_sui_reserves = calculate_init_sui_reserves(configuration, threshold);
 
@@ -782,7 +816,7 @@ module moonbags::moonbags {
         transfer::public_transfer<coin::TreasuryCap<Token>>(treasury_cap, @0x0);
 
         if (coin::value<SUI>(&coin_sui) > 0) {
-            buy_direct<Token>(configuration.admin, coin_sui, &mut pool, amount_out, configuration.platform_fee, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
+            buy_direct<Token>(configuration.admin, coin_sui, &mut pool, amount_out, configuration.platform_fee, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, token_lock_config, locking_time_ms, clock, ctx);
         } else {
             coin::destroy_zero<SUI>(coin_sui);
         };
