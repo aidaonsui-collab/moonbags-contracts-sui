@@ -35,7 +35,7 @@ const createPool = async (tokenAddress: string, treasuryCapObjId: string, suiAmo
 
         // Move call to create the pool and do first buy
         tx.moveCall({
-            target: `${packageAddress}::moonbags::create_and_first_buy_v3`,
+            target: `${packageAddress}::moonbags::create_and_lock_first_buy`,
             typeArguments: [tokenAddress],
             arguments: [
                 configuration,

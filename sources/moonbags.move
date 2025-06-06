@@ -702,7 +702,7 @@ module moonbags::moonbags {
         abort 0
     }
 
-    public entry fun create_and_first_buy_v3<Token>(
+    public entry fun create_and_lock_first_buy<Token>(
         configuration: &mut Configuration,
         stake_config: &mut StakeConfig,
         token_lock_config: &TokenLockConfig,
