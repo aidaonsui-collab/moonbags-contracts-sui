@@ -12,10 +12,30 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "Cetus"
+source = { local = "externals/token/cetus" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
 id = "CetusClmm"
 source = { local = "externals/cetus_clmm" }
 
 dependencies = [
+  { id = "IntegerMate", name = "IntegerMate" },
+  { id = "MoveSTL", name = "MoveSTL" },
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "CetusRedeem"
+source = { local = "externals/cetus_redeem" }
+
+dependencies = [
+  { id = "Cetus", name = "Cetus" },
+  { id = "CetusClmm", name = "CetusClmm" },
   { id = "IntegerMate", name = "IntegerMate" },
   { id = "MoveSTL", name = "MoveSTL" },
   { id = "Sui", name = "Sui" },
@@ -34,7 +54,9 @@ id = "LpBurn"
 source = { local = "externals/lp_burn" }
 
 dependencies = [
+  { id = "Cetus", name = "Cetus" },
   { id = "CetusClmm", name = "CetusClmm" },
+  { id = "CetusRedeem", name = "CetusRedeem" },
   { id = "Sui", name = "Sui" },
 ]
 
@@ -67,7 +89,7 @@ dependencies = [
 ]
 
 [move.toolchain-version]
-compiler-version = "1.49.1"
+compiler-version = "1.49.2"
 edition = "2024.beta"
 flavor = "sui"
 
