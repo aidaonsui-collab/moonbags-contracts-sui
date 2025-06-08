@@ -99,6 +99,7 @@ module moonbags::moonbags {
         threshold: u64,
     }
 
+    #[allow(unused)]
     public struct ConfigChangedEvent has copy, drop, store {
         old_platform_fee: u64,
         new_platform_fee: u64,
@@ -121,6 +122,7 @@ module moonbags::moonbags {
         ts: u64,
     }
 
+    #[allow(unused)]
     public struct CreatedEvent has copy, drop, store {
         name: String,
         symbol: String,
@@ -145,18 +147,21 @@ module moonbags::moonbags {
         ts: u64,
     }
 
+    #[allow(unused)]
     public struct OwnershipTransferredEvent has copy, drop, store {
         old_admin: address,
         new_admin: address,
         ts: u64,
     }
 
+    #[allow(unused)]
     public struct PoolCompletedEvent has copy, drop, store {
         token_address: String,
         lp: String,
         ts: u64,
     }
 
+    #[allow(unused)]
     public struct TradedEvent has copy, drop, store {
         is_buy: bool,
         user: address,
@@ -280,6 +285,7 @@ module moonbags::moonbags {
         transfer::transfer(admin, ctx.sender());
     }
 
+    #[allow(unused)]
     public entry fun create<Token>(
         configuration: &mut Configuration,
         stake_config: &mut StakeConfig,
@@ -651,6 +657,7 @@ module moonbags::moonbags {
         dynamic_object_field::exists_<String>(&configuration.id, type_name::get_address(&token_address))
     }
 
+    #[allow(unused)]
     public entry fun create_and_first_buy<Token>(
         configuration: &mut Configuration,
         stake_config: &mut StakeConfig,
@@ -676,6 +683,7 @@ module moonbags::moonbags {
         abort 0
     }
 
+    #[allow(unused)]
     public entry fun create_and_first_buy_v2<Token>(
         configuration: &mut Configuration,
         stake_config: &mut StakeConfig,
