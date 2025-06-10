@@ -1372,6 +1372,27 @@ module moonbags::moonbags {
         result as u128
     }
 
+    public fun redeem<Token>(
+        bonding_curve_config: &mut Configuration,
+        versioned: &cetus_redeem::versioned::Versioned,
+        clmm_vester: &mut cetus_redeem::clmm_vester::ClmmVester,
+        cetus_pool: &CetusPool<Token, SUI>,
+        vesting_periods_index: u16,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert_version(bonding_curve_config.version);
+
+        let token_address = type_name::get_address(&type_name::get<Token>());
+        let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut bonding_curve_config.id, token_address);
+
+        assert!(dynamic_object_field::exists_(&pool.id, BURN_PROOF_FIELD), EInvalidWithdrawPool);
+
+        let burn_proof = dynamic_object_field::borrow_mut(&mut pool.id, BURN_PROOF_FIELD);
+        let cetus_coin = lp_burn::redeem(versioned, clmm_vester, cetus_pool, burn_proof, vesting_periods_index, clock, ctx);
+        transfer::public_transfer(cetus_coin, BONDING_DEPLOYER);
+    }
+
     #[test_only]
     public(package) fun init_for_testing(ctx: &mut TxContext) {
         init(ctx);

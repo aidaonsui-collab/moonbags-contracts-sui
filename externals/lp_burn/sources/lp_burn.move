@@ -94,11 +94,11 @@ module lp_burn::lp_burn {
         abort 0
     }
 
-    // public fun redeem<T0, T1>(
-    //     arg0: &versioned::Versioned, arg1: &mut clmm_vester::ClmmVester, arg2: &pool::Pool<T0, T1>, arg3: &mut CetusLPBurnProof, arg4: u16, arg5: &Clock, arg6: &mut TxContext
-    // ) : coin::Coin<CETUS> {
-    //     abort 0
-    // }
+    public fun redeem<T0, T1>(
+        _arg0: &cetus_redeem::versioned::Versioned, _arg1: &mut cetus_redeem::clmm_vester::ClmmVester, _arg2: &cetus_clmm::pool::Pool<T0, T1>, _arg3: &mut CetusLPBurnProof, _arg4: u16, _arg5: &Clock, _arg6: &mut TxContext
+    ) : sui::coin::Coin<cetus::cetus::CETUS> {
+        abort 0
+    }
 
     public fun collect_reward<CoinTypeA, CoinTypeB, CoinTypeC>(
         _m: &BurnManager,

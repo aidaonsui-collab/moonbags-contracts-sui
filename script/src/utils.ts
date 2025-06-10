@@ -76,14 +76,29 @@ export async function processResult(tx: TransactionBlock) {
     options: {
       showObjectChanges: true,
       showEffects: true,
+      showEvents: true,
     },
     requestType: "WaitForLocalExecution",
   });
 
   console.log("status: ", JSON.stringify(result.effects?.status, null, 2));
 
+  // Log events if they exist
+  if (result.events && result.events.length > 0) {
+    console.log("\nEvents:");
+    result.events.forEach((event, index) => {
+      console.log(`Event ${index + 1}:`);
+      console.log(`  Type: ${event.type}`);
+      console.log(`  Sender: ${event.sender}`);
+      console.log(`  Data: ${JSON.stringify(event.parsedJson, null, 2)}`);
+      console.log("---");
+    });
+  } else {
+    console.log("\nNo events emitted");
+  }
+
   if (result.effects?.status?.status !== "success") {
-    console.log("\n\nPublishing failed");
+    console.log("\n\nTransaction failed");
     return;
   }
 }
