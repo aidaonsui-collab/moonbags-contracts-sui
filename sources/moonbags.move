@@ -57,6 +57,7 @@ module moonbags::moonbags {
     const EInsufficientInput: u64 = 5;
     const EExistTokenSupply: u64 = 6;
     const EPoolNotComplete: u64 = 7;
+    #[allow(unused)]
     const ENotUpgrade: u64 = 8;
     const EInvalidWithdrawPool: u64 = 9;
     const EInvalidWithdrawAmount: u64 = 10;
@@ -914,7 +915,9 @@ module moonbags::moonbags {
     }
 
     public entry fun migrate_version(_: &AdminCap, configuration: &mut Configuration) {
-        assert!(configuration.version < VERSION, ENotUpgrade);
+        // This will update the min version which is still compatible
+        // Allow both upgrade and downgrade version
+        // assert!(configuration.version < VERSION, ENotUpgrade);
         configuration.version = VERSION;
     }
 
