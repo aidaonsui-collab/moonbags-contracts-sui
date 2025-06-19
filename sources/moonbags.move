@@ -33,20 +33,21 @@ module moonbags::moonbags {
     const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
     const VERSION: u64 = 3;
     const FEE_DENOMINATOR: u64 = 10000;
+    const CETUS_DEX: u8 = 0;
+    const TURBOS_DEX: u8 = 1;
+    const BONDING_SUPPORT_DEXES: vector<u8> = vector[CETUS_DEX, TURBOS_DEX];
+    const BONDING_DEPLOYER: address = @0x0db7989b98d681455f424035e3f01c02e27f738fdd6634ef34dedf576a9d8cea;
+    const DISTRIBUTE_FEE_LOCK_DURATION_MS: u64 = 300_000; // 5 minutes
+    const ONE_CHECKPOINT_TIMESTAMP_MS: u64 = 250; // 1 checkpoint timestamp
+
+    // dynamic fields
     const BURN_PROOF_FIELD: vector<u8> = b"burn_proof";
     const COIN_METADATA_FIELD: vector<u8> = b"metadata_token";
     const VIRTUAL_TOKEN_RESERVES_FIELD: vector<u8> = b"virtual_token_reserves";
     const BURN_PROOF_TURBOS_FIELD: vector<u8> = b"turbos_burn_proof";
     const BONDING_DEX_FIELD : vector<u8> = b"migrate_dex";
     const DISTRIBUTE_FEE_LOCK_TIME_FIELD: vector<u8> = b"fee_lock_time";
-
-    const CETUS_DEX: u8 = 0;
-    const TURBOS_DEX: u8 = 1;
-    const BONDING_SUPPORT_DEXES: vector<u8> = vector[CETUS_DEX, TURBOS_DEX];
-
-    const BONDING_DEPLOYER: address = @0x0db7989b98d681455f424035e3f01c02e27f738fdd6634ef34dedf576a9d8cea;
-
-    const DISTRIBUTE_FEE_LOCK_DURATION_MS: u64 = 300_000; // 5 minutes
+    const POOL_CREATION_TIMESTAMP_FIELD: vector<u8> = b"pool_creation_timestamp";
 
     const EInvalidInput: u64 = 1;
     const ENotEnoughThreshold: u64 = 2;
@@ -385,6 +386,9 @@ module moonbags::moonbags {
         let unlock_timestamp_ms = clock::timestamp_ms(clock) + DISTRIBUTE_FEE_LOCK_DURATION_MS;
         dynamic_field::add(&mut pool.id, DISTRIBUTE_FEE_LOCK_TIME_FIELD, unlock_timestamp_ms);
 
+        let pool_creation_timestamp_ms = clock::timestamp_ms(clock);
+        dynamic_field::add(&mut pool.id, POOL_CREATION_TIMESTAMP_FIELD, pool_creation_timestamp_ms);
+
         transfer::public_transfer<coin::TreasuryCap<Token>>(treasury_cap, @0x0);
 
         let token_address = type_name::get<Token>();
@@ -458,57 +462,18 @@ module moonbags::moonbags {
         assert!(version <= VERSION, EWrongVersion);
     }
 
+    #[allow(unused)]
     public entry fun buy_exact_out<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out: u64, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext) {
-        assert_version(configuration.version);
-
-        let token_address = type_name::get<Token>();
-        let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
-
-        assert!(!pool.is_completed, ECompletedPool);
-        assert!(amount_out > 0, EInvalidInput);
-
-        let amount_sui_in = coin::value<SUI>(&coin_sui);
-        let virtual_remain_token_reserves = get_virtual_remain_token_reserves(pool);
-        let token_reserves_in_pool = pool.virtual_token_reserves - virtual_remain_token_reserves;
-        let actual_amount_out = min(amount_out, token_reserves_in_pool);
-
-        let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
-        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
-
-        coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui, fee, ctx));
-
-        assert!(amount_sui_in >= amount_in_swap + fee, EInsufficientInput);
-
-        let (coin_token_out, coin_sui_out) = swap<Token>(pool, coin::zero<Token>(ctx), coin_sui, actual_amount_out, amount_sui_in - amount_in_swap - fee, ctx);
-
-        pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
-
-        transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
-        transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
-
-        let traded_event = TradedEventV2{
-            is_buy                 : true,
-            user                   : ctx.sender(),
-            token_address          : type_name::into_string(token_address),
-            sui_amount             : amount_in_swap,
-            token_amount           : actual_amount_out,
-            virtual_sui_reserves   : pool.virtual_sui_reserves,
-            virtual_token_reserves : pool.virtual_token_reserves,
-            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
-            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
-            pool_id                : object::id(pool),
-            fee                    : fee,
-            ts                     : clock::timestamp_ms(clock),
-        };
-        emit<TradedEventV2>(traded_event);
-
-        if (actual_amount_out == token_reserves_in_pool) {
-            transfer_pool<Token>(configuration.admin, pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
-        };
+        abort 0
     }
 
+    #[allow(unused)]
     public entry fun buy_exact_in<Token>(configuration: &mut Configuration, coin_sui: Coin<SUI>, amount_in: u64, amount_out_min: u64, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext) {
-        let (coin_sui_out, coin_token_out) = buy_exact_in_returns<Token>(configuration, coin_sui, amount_in, amount_out_min, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
+        abort 0
+    }
+
+    public entry fun buy_exact_in_with_lock<Token>(configuration: &mut Configuration, token_lock_config: &TokenLockConfig, coin_sui: Coin<SUI>, amount_in: u64, amount_out_min: u64, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext) {
+        let (coin_sui_out, coin_token_out) = buy_exact_in_returns_with_lock<Token>(configuration, token_lock_config, coin_sui, amount_in, amount_out_min, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
         transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
         transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
     }
@@ -602,7 +567,12 @@ module moonbags::moonbags {
         (coin_sui_out, coin_token_out)
     }
 
+    #[allow(unused)]
     public fun buy_exact_in_returns<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_in: u64, amount_out_min: u64, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext): (Coin<SUI>, Coin<Token>) {
+        abort 0
+    }
+
+    public fun buy_exact_in_returns_with_lock<Token>(configuration: &mut Configuration, token_lock_config: &TokenLockConfig, mut coin_sui: Coin<SUI>, amount_in: u64, amount_out_min: u64, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig, metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext): (Coin<SUI>, Coin<Token>) {
         assert_version(configuration.version);
         let total_sui_in = coin::value<SUI>(&coin_sui);
         assert!(total_sui_in >= amount_in, EInsufficientInput);
@@ -633,7 +603,7 @@ module moonbags::moonbags {
 
         assert!(total_sui_in >= amount_in_swap + fee, EInsufficientInput);
 
-        let (coin_token_out, coin_sui_out) = swap<Token>(pool, coin::zero<Token>(ctx), coin_sui, actual_amount_out, total_sui_in - amount_in_swap - fee, ctx);
+        let (mut coin_token_out, coin_sui_out) = swap<Token>(pool, coin::zero<Token>(ctx), coin_sui, actual_amount_out, total_sui_in - amount_in_swap - fee, ctx);
 
         pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
 
@@ -656,6 +626,22 @@ module moonbags::moonbags {
         if (actual_amount_out == token_reserves_in_pool) {
             transfer_pool<Token>(configuration.admin, pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
         };
+
+        if (dynamic_field::exists_(&pool.id, POOL_CREATION_TIMESTAMP_FIELD)) {
+            let creation_timestamp_ms = *dynamic_field::borrow<vector<u8>, u64>(&pool.id, POOL_CREATION_TIMESTAMP_FIELD);
+            let current_timestamp_ms = clock::timestamp_ms(clock);
+            
+            if (current_timestamp_ms - creation_timestamp_ms < ONE_CHECKPOINT_TIMESTAMP_MS) {
+                let end_time = current_timestamp_ms + 3_600_000; // 1 hour lock
+                let locked_token = coin_token_out;
+                let amount_lock_token = coin::value<Token>(&locked_token);
+
+                moonbags_token_lock::create_lock(token_lock_config, locked_token, ctx.sender(), amount_lock_token, end_time, clock, ctx);
+                
+                coin_token_out = coin::zero<Token>(ctx);
+            }
+        };
+
         (coin_sui_out, coin_token_out)
     }
 
