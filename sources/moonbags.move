@@ -38,12 +38,15 @@ module moonbags::moonbags {
     const VIRTUAL_TOKEN_RESERVES_FIELD: vector<u8> = b"virtual_token_reserves";
     const BURN_PROOF_TURBOS_FIELD: vector<u8> = b"turbos_burn_proof";
     const BONDING_DEX_FIELD : vector<u8> = b"migrate_dex";
+    const DISTRIBUTE_FEE_LOCK_TIME_FIELD: vector<u8> = b"fee_lock_time";
 
     const CETUS_DEX: u8 = 0;
     const TURBOS_DEX: u8 = 1;
     const BONDING_SUPPORT_DEXES: vector<u8> = vector[CETUS_DEX, TURBOS_DEX];
 
     const BONDING_DEPLOYER: address = @0x0db7989b98d681455f424035e3f01c02e27f738fdd6634ef34dedf576a9d8cea;
+
+    const DISTRIBUTE_FEE_LOCK_DURATION_MS: u64 = 300_000; // 5 minutes
 
     const EInvalidInput: u64 = 1;
     const ENotEnoughThreshold: u64 = 2;
@@ -55,6 +58,7 @@ module moonbags::moonbags {
     const ENotUpgrade: u64 = 8;
     const EInvalidWithdrawPool: u64 = 9;
     const EInvalidWithdrawAmount: u64 = 10;
+    const EInvalidDistributeFeeTime: u64 = 11;
 
     public struct AdminCap has key {
         id: UID,
@@ -278,7 +282,7 @@ module moonbags::moonbags {
             init_creator_fee_withdraw: 3000,         // 30% to creator
             init_stake_fee_withdraw: 3500,           // 35% to stakers
             init_platform_stake_fee_withdraw: 2000,  // 20% to platform stakers
-            token_platform_type_name: b"6d4f59540a0525077ce3794e9982a36bf8d894fd457c55e48be0538ebff975c8::shro::SHRO".to_ascii_string(),
+            token_platform_type_name: b"16ab6a14d76a90328a6b04f06b0a0ce952847017023624e0c37bf8aa314c39ba::shr::SHR".to_ascii_string(),
         };
         transfer::public_share_object<Configuration>(configuration);
 
@@ -377,6 +381,9 @@ module moonbags::moonbags {
 
         assert!(vector::contains(&BONDING_SUPPORT_DEXES, &bonding_dex), EInvalidInput);
         dynamic_field::add(&mut pool.id,  BONDING_DEX_FIELD, bonding_dex);
+
+        let unlock_timestamp_ms = clock::timestamp_ms(clock) + DISTRIBUTE_FEE_LOCK_DURATION_MS;
+        dynamic_field::add(&mut pool.id, DISTRIBUTE_FEE_LOCK_TIME_FIELD, unlock_timestamp_ms);
 
         transfer::public_transfer<coin::TreasuryCap<Token>>(treasury_cap, @0x0);
 
@@ -1334,6 +1341,13 @@ module moonbags::moonbags {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        if (dynamic_field::exists_(&pool.id, DISTRIBUTE_FEE_LOCK_TIME_FIELD)) {
+            let unlock_timestamp_ms = *dynamic_field::borrow<vector<u8>, u64>(&pool.id, DISTRIBUTE_FEE_LOCK_TIME_FIELD);
+            let current_timestamp_ms = clock::timestamp_ms(clock);
+
+            assert!(current_timestamp_ms >= unlock_timestamp_ms, EInvalidDistributeFeeTime);
+        };
+
         let fee_amount = coin::value(&pool.fee_recipient);
         // Return early to prevent excessive function calls, threshold FEE_DENOMINATOR prevent division to zero
         if (fee_amount <= FEE_DENOMINATOR) {
