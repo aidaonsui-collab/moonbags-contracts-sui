@@ -14,7 +14,6 @@ module moonbags::moonbags_token_lock {
     const EUnauthorized: u64 = 3;
     const EInvalidParams: u64 = 4;
     const EInvalidConfig: u64 = 5;
-    const ELockAlreadyExpired: u64 = 6;
 
     // === Constants ===
     const FEE_DENOMINATOR: u64 = 10000;
