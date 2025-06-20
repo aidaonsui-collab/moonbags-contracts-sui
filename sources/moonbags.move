@@ -39,6 +39,7 @@ module moonbags::moonbags {
     const BONDING_DEPLOYER: address = @0x0db7989b98d681455f424035e3f01c02e27f738fdd6634ef34dedf576a9d8cea;
     const DISTRIBUTE_FEE_LOCK_DURATION_MS: u64 = 300_000; // 5 minutes
     const ONE_CHECKPOINT_TIMESTAMP_MS: u64 = 250; // 1 checkpoint timestamp
+    const POOL_CREATION_FEE: u64 = 10_000_000; // 0.01 SUI
 
     // dynamic fields
     const BURN_PROOF_FIELD: vector<u8> = b"burn_proof";
@@ -310,6 +311,7 @@ module moonbags::moonbags {
         abort 0
     }
 
+    #[allow(unused)]
     public entry fun create_v2<Token>(
         configuration: &mut Configuration,
         stake_config: &mut StakeConfig,
@@ -327,11 +329,33 @@ module moonbags::moonbags {
         website: String,
         ctx: &mut TxContext
     ) {
+        abort 0
+    }
+
+    public entry fun create_with_fee<Token>(
+        configuration: &mut Configuration,
+        stake_config: &mut StakeConfig,
+        mut treasury_cap: coin::TreasuryCap<Token>,
+        metadata_token: CoinMetadata<Token>,
+        mut pool_creation_fee: Coin<SUI>,
+        bonding_dex: u8,
+        threshold: Option<u64>,
+        clock: &Clock,
+        name: String,
+        symbol: String,
+        uri: String,
+        description: String,
+        twitter: String,
+        telegram: String,
+        website: String,
+        ctx: &mut TxContext
+    ) {
         assert!(ascii::length(&uri) <= 300, EInvalidInput);
         assert!(ascii::length(&description) <= 1000, EInvalidInput);
         assert!(ascii::length(&twitter) <= 500, EInvalidInput);
         assert!(ascii::length(&telegram) <= 500, EInvalidInput);
         assert!(ascii::length(&website) <= 500, EInvalidInput);
+        assert!(coin::value<SUI>(&pool_creation_fee) >= POOL_CREATION_FEE, EInvalidInput);
 
         assert_version(configuration.version);
         assert!(coin::total_supply<Token>(&treasury_cap) == 0, EExistTokenSupply);
@@ -423,6 +447,11 @@ module moonbags::moonbags {
 
         moonbags_stake::initialize_staking_pool<Token>(stake_config, clock, ctx);
         moonbags_stake::initialize_creator_pool<Token>(stake_config, ctx.sender(), clock, ctx);
+
+        // Collect creation fee
+        let collect_creation_fee = coin::split(&mut pool_creation_fee, POOL_CREATION_FEE, ctx);
+        transfer::public_transfer(collect_creation_fee, configuration.fee_platform_recipient);
+        transfer::public_transfer(pool_creation_fee, ctx.sender());
     }
 
     fun swap<Token>(pool: &mut Pool<Token>, coin_token: Coin<Token>, coin_sui: Coin<SUI>, amount_token_out: u64, amount_sui_out: u64, ctx: &mut TxContext) : (Coin<Token>, Coin<SUI>) {
@@ -523,48 +552,9 @@ module moonbags::moonbags {
         };
     }
 
+    #[allow(unused)]
     public fun buy_exact_out_returns<Token>(configuration: &mut Configuration, mut coin_sui: Coin<SUI>, amount_out: u64, cetus_burn_manager: &mut BurnManager, cetus_pools: &mut Pools, cetus_global_config: &mut GlobalConfig,  metadata_sui: &CoinMetadata<SUI>, clock: &Clock, ctx: &mut TxContext) : (Coin<SUI>, Coin<Token>) {
-        assert_version(configuration.version);
-        let token_address = type_name::get<Token>();
-        let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut configuration.id, type_name::get_address(&token_address));
-        assert!(!pool.is_completed, ECompletedPool);
-        assert!(amount_out > 0, EInvalidInput);
-
-        let virtual_remain_token_reserves = get_virtual_remain_token_reserves(pool);
-        let token_reserves_in_pool = pool.virtual_token_reserves - virtual_remain_token_reserves;
-        let actual_amount_out = min(amount_out, token_reserves_in_pool);
-
-        let amount_sui_in = coin::value<SUI>(&coin_sui);
-        let amount_in_swap = curves::calculate_add_liquidity_cost(pool.virtual_sui_reserves, pool.virtual_token_reserves, actual_amount_out) + 1;
-        let fee = utils::as_u64(utils::div(utils::mul(utils::from_u64(amount_in_swap), utils::from_u64(configuration.platform_fee)), utils::from_u64(FEE_DENOMINATOR)));
-        assert!(amount_sui_in >= amount_in_swap + fee, EInsufficientInput);
-
-        coin::join(&mut pool.fee_recipient, coin::split<SUI>(&mut coin_sui, fee, ctx));
-
-        let (coin_token_out, coin_sui_out) = swap<Token>(pool, coin::zero<Token>(ctx), coin_sui, actual_amount_out, amount_sui_in - amount_in_swap - fee, ctx);
-
-        pool.virtual_token_reserves = pool.virtual_token_reserves - coin::value<Token>(&coin_token_out);
-
-        let traded_event = TradedEventV2{
-            is_buy                 : true,
-            user                   : ctx.sender(),
-            token_address          : type_name::into_string(token_address),
-            sui_amount             : amount_in_swap,
-            token_amount           : actual_amount_out,
-            virtual_sui_reserves   : pool.virtual_sui_reserves,
-            virtual_token_reserves : pool.virtual_token_reserves,
-            real_sui_reserves      : coin::value<SUI>(&pool.real_sui_reserves),
-            real_token_reserves    : coin::value<Token>(&pool.real_token_reserves),
-            pool_id                : object::id<Pool<Token>>(pool),
-            fee                    : fee,
-            ts                     : clock::timestamp_ms(clock),
-        };
-        emit<TradedEventV2>(traded_event);
-
-        if (token_reserves_in_pool == actual_amount_out) {
-            transfer_pool<Token>(configuration.admin, pool, cetus_burn_manager, cetus_pools, cetus_global_config , metadata_sui, clock, ctx);
-        };
-        (coin_sui_out, coin_token_out)
+        abort 0
     }
 
     #[allow(unused)]
@@ -703,6 +693,7 @@ module moonbags::moonbags {
         abort 0
     }
 
+    #[allow(unused)]
     public entry fun create_and_lock_first_buy<Token>(
         configuration: &mut Configuration,
         stake_config: &mut StakeConfig,
@@ -728,11 +719,41 @@ module moonbags::moonbags {
         metadata_token: CoinMetadata<Token>,
         ctx: &mut TxContext
     ) {
+        abort 0
+    }
+
+    public entry fun create_and_lock_first_buy_with_fee<Token>(
+        configuration: &mut Configuration,
+        stake_config: &mut StakeConfig,
+        token_lock_config: &TokenLockConfig,
+        mut treasury_cap: coin::TreasuryCap<Token>,
+        mut pool_creation_fee: Coin<SUI>,
+        bonding_dex: u8,
+        coin_sui: Coin<SUI>,
+        amount_out: u64,
+        threshold: Option<u64>,
+        locking_time_ms: u64,
+        clock: &Clock,
+        name: String,
+        symbol: String,
+        uri: String,
+        description: String,
+        twitter: String,
+        telegram: String,
+        website: String,
+        cetus_burn_manager: &mut BurnManager,
+        cetus_pools: &mut Pools,
+        cetus_global_config: &mut GlobalConfig,
+        metadata_sui: &CoinMetadata<SUI>,
+        metadata_token: CoinMetadata<Token>,
+        ctx: &mut TxContext
+    ) {
         assert!(ascii::length(&uri) <= 300, EInvalidInput);
         assert!(ascii::length(&description) <= 1000, EInvalidInput);
         assert!(ascii::length(&twitter) <= 500, EInvalidInput);
         assert!(ascii::length(&telegram) <= 500, EInvalidInput);
         assert!(ascii::length(&website) <= 500, EInvalidInput);
+        assert!(coin::value<SUI>(&pool_creation_fee) >= POOL_CREATION_FEE, EInvalidInput);
 
         assert_version(configuration.version);
         assert!(coin::total_supply<Token>(&treasury_cap) == 0, EExistTokenSupply);
@@ -827,6 +848,11 @@ module moonbags::moonbags {
 
         moonbags_stake::initialize_staking_pool<Token>(stake_config, clock, ctx);
         moonbags_stake::initialize_creator_pool<Token>(stake_config, ctx.sender(), clock, ctx);
+
+        // Collect creation fee
+        let collect_creation_fee = coin::split(&mut pool_creation_fee, POOL_CREATION_FEE, ctx);
+        transfer::public_transfer(collect_creation_fee, configuration.fee_platform_recipient);
+        transfer::public_transfer(pool_creation_fee, ctx.sender());
     }
 
     public entry fun create_threshold_config(_: &AdminCap, threshold: u64, ctx: &mut TxContext) {
