@@ -14,6 +14,7 @@ module moonbags::moonbags_token_lock {
     const EUnauthorized: u64 = 3;
     const EInvalidParams: u64 = 4;
     const EInvalidConfig: u64 = 5;
+    const ELockAlreadyExpired: u64 = 6;
 
     // === Constants ===
     const FEE_DENOMINATOR: u64 = 10000;
@@ -57,6 +58,13 @@ module moonbags::moonbags_token_lock {
         sender: address,
         recipient: address,
         amount: u64,
+    }
+    
+    public struct LockExtendedEvent has copy, drop {
+        contract_id: address,
+        sender: address,
+        old_end_time: u64,
+        new_end_time: u64,
     }
 
     fun init(ctx: &mut TxContext) {
@@ -175,6 +183,43 @@ module moonbags::moonbags_token_lock {
             sender      : sender,
             recipient   : contract.recipient,
             amount      : amount,
+        });
+    }
+
+    /*
+     * Extends the lock duration of an existing time-locked token contract.
+     * 
+     * @param contract - Mutable reference to the lock contract to extend
+     * @param additional_duration_ms - Additional duration to add to the current lock period (in milliseconds)
+     * @param clock - Reference to the clock object for timestamp verification
+     * @param ctx - Transaction context
+     */
+    public entry fun extend_lock<Token>(
+        contract: &mut LockContract<Token>,
+        additional_duration_ms: u64,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let sender = ctx.sender();
+
+        assert!(sender == contract.locker, EUnauthorized);
+        
+        assert!(!contract.closed, EContractClosed);
+
+        let current_time = clock::timestamp_ms(clock);
+
+        let old_end_time = contract.end_time;
+        if (current_time >= old_end_time) {
+            contract.end_time = current_time + additional_duration_ms;
+        } else {
+            contract.end_time = old_end_time + additional_duration_ms;
+        };
+        
+        event::emit(LockExtendedEvent {
+            contract_id: object::uid_to_address(&contract.id),
+            sender: sender,
+            old_end_time: old_end_time,
+            new_end_time: contract.end_time,
         });
     }
 

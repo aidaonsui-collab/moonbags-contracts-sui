@@ -10,6 +10,7 @@ module moonbags::token_lock_test {
     const USER: address = @0x2;
     const RECIPIENT: address = @0x3;
     const ONE_HOUR: u64 = 3600000; // 1 hour in milliseconds
+    const TWO_HOURS: u64 = 7200000; // 2 hours in milliseconds
 
     const EOutputNotEqualToExpected: u64 = 0;
     
@@ -558,6 +559,221 @@ module moonbags::token_lock_test {
             let admin_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
             assert!(coin::value(&admin_coin) == 150, EOutputNotEqualToExpected); // 1% of 15000
             ts::return_to_sender(&scenario, admin_coin);
+        };
+        
+        transfer::public_transfer(treasury_cap, ADMIN);
+        ts::end(scenario);
+    }
+    
+    #[test]
+    fun test_extend_lock() {
+        setup();
+        let mut scenario = ts::begin(ADMIN);
+        
+        // Create test token and mint to user
+        let mut treasury_cap = coin::create_treasury_cap_for_testing(scenario.ctx());
+        
+        ts::next_tx(&mut scenario, ADMIN);
+        {
+            let coin = coin::mint<TEST_TOKEN>(&mut treasury_cap, 20000, ts::ctx(&mut scenario));
+            transfer::public_transfer(coin, USER);
+        };
+        
+        // Create lock
+        ts::next_tx(&mut scenario, USER);
+        {
+            let config = ts::take_shared<Configuration>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+            
+            let amount = 15000;
+            
+            // Calculate end time by adding duration to current time
+            let current_time = clock::timestamp_ms(&clock);
+            let end_time = current_time + ONE_HOUR;
+            
+            moonbags_token_lock::create_lock<TEST_TOKEN>(
+                &config,
+                user_coin,
+                RECIPIENT,
+                amount,
+                end_time,
+                &clock,
+                ts::ctx(&mut scenario)
+            );
+
+            ts::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        
+        // Record original lock end time
+        let original_end_time;
+        ts::next_tx(&mut scenario, USER);
+        {
+            let lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
+            let (_, _, _, end_time, _, _, _) = moonbags_token_lock::view_lock_for_testing(&lock_contract);
+            original_end_time = end_time;
+            ts::return_shared(lock_contract);
+        };
+        
+        // Extend lock as the locker (USER)
+        ts::next_tx(&mut scenario, USER);
+        {
+            let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
+            let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+            
+            // Add another hour to the lock period
+            moonbags_token_lock::extend_lock<TEST_TOKEN>(
+                &mut lock_contract,
+                ONE_HOUR, // Adding one more hour
+                &clock,
+                ts::ctx(&mut scenario)
+            );
+            
+            // Verify lock was extended
+            let (_, _, _, new_end_time, _, _, _) = moonbags_token_lock::view_lock_for_testing(&lock_contract);
+            assert!(new_end_time == original_end_time + ONE_HOUR, EOutputNotEqualToExpected);
+            
+            ts::return_shared(lock_contract);
+            clock::destroy_for_testing(clock);
+        };
+        
+        // Extend lock as the locker again (USER)
+        ts::next_tx(&mut scenario, USER);
+        {
+            let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
+            let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+            
+            // Add another hour to the lock period
+            moonbags_token_lock::extend_lock<TEST_TOKEN>(
+                &mut lock_contract,
+                ONE_HOUR, // Adding one more hour
+                &clock,
+                ts::ctx(&mut scenario)
+            );
+            
+            // Verify lock was extended again
+            let (_, _, _, new_end_time, _, _, _) = moonbags_token_lock::view_lock_for_testing(&lock_contract);
+            assert!(new_end_time == original_end_time + TWO_HOURS, EOutputNotEqualToExpected);
+            
+            ts::return_shared(lock_contract);
+            clock::destroy_for_testing(clock);
+        };
+        
+        transfer::public_transfer(treasury_cap, ADMIN);
+        ts::end(scenario);
+    }
+    
+    #[test]
+    #[expected_failure(abort_code = moonbags::moonbags_token_lock::EUnauthorized)]
+    fun test_extend_lock_unauthorized() {
+        setup();
+        let mut scenario = ts::begin(ADMIN);
+        
+        // Create test token and mint to user
+        let mut treasury_cap = coin::create_treasury_cap_for_testing(scenario.ctx());
+        
+        ts::next_tx(&mut scenario, ADMIN);
+        {
+            let coin = coin::mint<TEST_TOKEN>(&mut treasury_cap, 20000, ts::ctx(&mut scenario));
+            transfer::public_transfer(coin, USER);
+        };
+        
+        // Create lock
+        ts::next_tx(&mut scenario, USER);
+        {
+            let config = ts::take_shared<Configuration>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+            
+            moonbags_token_lock::create_lock<TEST_TOKEN>(
+                &config,
+                user_coin,
+                RECIPIENT,
+                15000,
+                clock::timestamp_ms(&clock) + ONE_HOUR,
+                &clock,
+                ts::ctx(&mut scenario)
+            );
+
+            ts::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        
+        // Try to extend lock as ADMIN (who is not locker or recipient)
+        ts::next_tx(&mut scenario, ADMIN);
+        {
+            let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
+            let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+            
+            // This should fail with EUnauthorized
+            moonbags_token_lock::extend_lock<TEST_TOKEN>(
+                &mut lock_contract,
+                ONE_HOUR,
+                &clock,
+                ts::ctx(&mut scenario)
+            );
+            
+            ts::return_shared(lock_contract);
+            clock::destroy_for_testing(clock);
+        };
+        
+        transfer::public_transfer(treasury_cap, ADMIN);
+        ts::end(scenario);
+    }
+    
+    #[test]
+    #[expected_failure(abort_code = moonbags::moonbags_token_lock::EUnauthorized)]
+    fun test_extend_lock_as_recipient() {
+        setup();
+        let mut scenario = ts::begin(ADMIN);
+        
+        // Create test token and mint to user
+        let mut treasury_cap = coin::create_treasury_cap_for_testing(scenario.ctx());
+        
+        ts::next_tx(&mut scenario, ADMIN);
+        {
+            let coin = coin::mint<TEST_TOKEN>(&mut treasury_cap, 20000, ts::ctx(&mut scenario));
+            transfer::public_transfer(coin, USER);
+        };
+        
+        // Create lock
+        ts::next_tx(&mut scenario, USER);
+        {
+            let config = ts::take_shared<Configuration>(&scenario);
+            let user_coin = ts::take_from_sender<Coin<TEST_TOKEN>>(&scenario);
+            let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+            
+            moonbags_token_lock::create_lock<TEST_TOKEN>(
+                &config,
+                user_coin,
+                RECIPIENT,
+                15000,
+                clock::timestamp_ms(&clock) + ONE_HOUR,
+                &clock,
+                ts::ctx(&mut scenario)
+            );
+
+            ts::return_shared(config);
+            clock::destroy_for_testing(clock);
+        };
+        
+        // Try to extend lock as RECIPIENT (who is not allowed to extend)
+        ts::next_tx(&mut scenario, RECIPIENT);
+        {
+            let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
+            let clock = clock::create_for_testing(ts::ctx(&mut scenario));
+            
+            // This should fail with EUnauthorized
+            moonbags_token_lock::extend_lock<TEST_TOKEN>(
+                &mut lock_contract,
+                ONE_HOUR,
+                &clock,
+                ts::ctx(&mut scenario)
+            );
+            
+            ts::return_shared(lock_contract);
+            clock::destroy_for_testing(clock);
         };
         
         transfer::public_transfer(treasury_cap, ADMIN);
