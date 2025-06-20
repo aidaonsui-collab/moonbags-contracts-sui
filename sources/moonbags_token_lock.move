@@ -58,13 +58,6 @@ module moonbags::moonbags_token_lock {
         recipient: address,
         amount: u64,
     }
-    
-    public struct LockExtendedEvent has copy, drop {
-        contract_id: address,
-        sender: address,
-        old_end_time: u64,
-        new_end_time: u64,
-    }
 
     fun init(ctx: &mut TxContext) {
         transfer::transfer(
@@ -214,11 +207,15 @@ module moonbags::moonbags_token_lock {
             contract.end_time = old_end_time + additional_duration_ms;
         };
         
-        event::emit(LockExtendedEvent {
-            contract_id: object::uid_to_address(&contract.id),
-            sender: sender,
-            old_end_time: old_end_time,
-            new_end_time: contract.end_time,
+        event::emit(LockCreatedEvent {
+            contract_id     : object::uid_to_address(&contract.id),
+            token_address   : type_name::into_string(type_name::get<Token>()),
+            locker          : contract.locker,
+            recipient       : contract.recipient,
+            amount          : contract.amount,
+            fee             : 0,
+            start_time      : contract.start_time,
+            end_time        : contract.end_time,
         });
     }
 
