@@ -808,6 +808,12 @@ module moonbags::moonbags {
         assert!(vector::contains(&BONDING_SUPPORT_DEXES, &bonding_dex), EInvalidInput);
         dynamic_field::add(&mut pool.id,  BONDING_DEX_FIELD, bonding_dex);
 
+        let unlock_timestamp_ms = clock::timestamp_ms(clock) + DISTRIBUTE_FEE_LOCK_DURATION_MS;
+        dynamic_field::add(&mut pool.id, DISTRIBUTE_FEE_LOCK_TIME_FIELD, unlock_timestamp_ms);
+
+        let pool_creation_timestamp_ms = clock::timestamp_ms(clock);
+        dynamic_field::add(&mut pool.id, POOL_CREATION_TIMESTAMP_FIELD, pool_creation_timestamp_ms);
+
         let token_address = type_name::get<Token>();
         let pool_address = type_name::get<Pool<Token>>();
         let created_event = CreatedEventV2 {
