@@ -188,7 +188,7 @@ module moonbags::moonbags_token_lock {
      */
     public entry fun extend_lock<Token>(
         contract: &mut LockContract<Token>,
-        additional_duration_ms: u64,
+        new_end_time: u64,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
@@ -200,12 +200,10 @@ module moonbags::moonbags_token_lock {
 
         let current_time = clock::timestamp_ms(clock);
 
-        let old_end_time = contract.end_time;
-        if (current_time >= old_end_time) {
-            contract.end_time = current_time + additional_duration_ms;
-        } else {
-            contract.end_time = old_end_time + additional_duration_ms;
-        };
+        assert!(new_end_time > contract.end_time, EInvalidParams);
+        assert!(new_end_time > current_time, EInvalidParams);
+
+        contract.end_time = new_end_time;
         
         event::emit(LockCreatedEvent {
             contract_id     : object::uid_to_address(&contract.id),

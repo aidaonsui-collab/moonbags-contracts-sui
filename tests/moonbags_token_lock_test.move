@@ -622,17 +622,18 @@ module moonbags::token_lock_test {
             let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
-            // Add another hour to the lock period
+            // Set new end time to original + one hour
+            let new_end_time = original_end_time + ONE_HOUR;
             moonbags_token_lock::extend_lock<TEST_TOKEN>(
                 &mut lock_contract,
-                ONE_HOUR, // Adding one more hour
+                new_end_time,
                 &clock,
                 ts::ctx(&mut scenario)
             );
             
             // Verify lock was extended
-            let (_, _, _, new_end_time, _, _, _) = moonbags_token_lock::view_lock_for_testing(&lock_contract);
-            assert!(new_end_time == original_end_time + ONE_HOUR, EOutputNotEqualToExpected);
+            let (_, _, _, extended_end_time, _, _, _) = moonbags_token_lock::view_lock_for_testing(&lock_contract);
+            assert!(extended_end_time == new_end_time, EOutputNotEqualToExpected);
             
             ts::return_shared(lock_contract);
             clock::destroy_for_testing(clock);
@@ -644,17 +645,18 @@ module moonbags::token_lock_test {
             let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
-            // Add another hour to the lock period
+            // Set new end time to original + two hours
+            let new_end_time = original_end_time + TWO_HOURS;
             moonbags_token_lock::extend_lock<TEST_TOKEN>(
                 &mut lock_contract,
-                ONE_HOUR, // Adding one more hour
+                new_end_time,
                 &clock,
                 ts::ctx(&mut scenario)
             );
             
             // Verify lock was extended again
-            let (_, _, _, new_end_time, _, _, _) = moonbags_token_lock::view_lock_for_testing(&lock_contract);
-            assert!(new_end_time == original_end_time + TWO_HOURS, EOutputNotEqualToExpected);
+            let (_, _, _, final_end_time, _, _, _) = moonbags_token_lock::view_lock_for_testing(&lock_contract);
+            assert!(final_end_time == new_end_time, EOutputNotEqualToExpected);
             
             ts::return_shared(lock_contract);
             clock::destroy_for_testing(clock);
@@ -706,10 +708,14 @@ module moonbags::token_lock_test {
             let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
+            // Calculate new end time (current end time + one hour)
+            let (_, _, _, current_end_time, _, _, _) = moonbags_token_lock::view_lock_for_testing(&lock_contract);
+            let new_end_time = current_end_time + ONE_HOUR;
+            
             // This should fail with EUnauthorized
             moonbags_token_lock::extend_lock<TEST_TOKEN>(
                 &mut lock_contract,
-                ONE_HOUR,
+                new_end_time,
                 &clock,
                 ts::ctx(&mut scenario)
             );
@@ -764,10 +770,14 @@ module moonbags::token_lock_test {
             let mut lock_contract = ts::take_shared<LockContract<TEST_TOKEN>>(&scenario);
             let clock = clock::create_for_testing(ts::ctx(&mut scenario));
             
+            // Calculate new end time (current end time + one hour)
+            let (_, _, _, current_end_time, _, _, _) = moonbags_token_lock::view_lock_for_testing(&lock_contract);
+            let new_end_time = current_end_time + ONE_HOUR;
+            
             // This should fail with EUnauthorized
             moonbags_token_lock::extend_lock<TEST_TOKEN>(
                 &mut lock_contract,
-                ONE_HOUR,
+                new_end_time,
                 &clock,
                 ts::ctx(&mut scenario)
             );
