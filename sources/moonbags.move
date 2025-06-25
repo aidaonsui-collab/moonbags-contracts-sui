@@ -29,6 +29,7 @@ module moonbags::moonbags {
     use lp_burn::lp_burn::{Self, BurnManager};
     use turbos_clmm::position_manager::TurbosPositionBurnNFT;
 
+    // === Constants Config ===
     const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
     const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
     const VERSION: u64 = 3;
@@ -36,12 +37,15 @@ module moonbags::moonbags {
     const CETUS_DEX: u8 = 0;
     const TURBOS_DEX: u8 = 1;
     const BONDING_SUPPORT_DEXES: vector<u8> = vector[CETUS_DEX, TURBOS_DEX];
-    const BONDING_DEPLOYER: address = @0x0db7989b98d681455f424035e3f01c02e27f738fdd6634ef34dedf576a9d8cea;
     const DISTRIBUTE_FEE_LOCK_DURATION_MS: u64 = 300_000; // 5 minutes
     const ONE_CHECKPOINT_TIMESTAMP_MS: u64 = 250; // 1 checkpoint timestamp
     const POOL_CREATION_FEE: u64 = 10_000_000; // 0.01 SUI
 
-    // dynamic fields
+    // === Constants Addresses ===
+    const BONDING_DEPLOYER: address = @0x0db7989b98d681455f424035e3f01c02e27f738fdd6634ef34dedf576a9d8cea;
+    const PLATFORM_TOKEN_BUYER: address = @0x0db7989b98d681455f424035e3f01c02e27f738fdd6634ef34dedf576a9d8cea;
+
+    // === Constants Dynamic Fields ===
     const BURN_PROOF_FIELD: vector<u8> = b"burn_proof";
     const COIN_METADATA_FIELD: vector<u8> = b"metadata_token";
     const VIRTUAL_TOKEN_RESERVES_FIELD: vector<u8> = b"virtual_token_reserves";
@@ -283,7 +287,7 @@ module moonbags::moonbags {
             token_decimals: 6,
             init_platform_fee_withdraw: 1500,        // 15% to platform
             init_creator_fee_withdraw: 3000,         // 30% to creator
-            init_stake_fee_withdraw: 3500,           // 35% to stakers
+            init_stake_fee_withdraw: 2500,           // 25% to stakers
             init_platform_stake_fee_withdraw: 2000,  // 20% to platform stakers
             token_platform_type_name: b"16ab6a14d76a90328a6b04f06b0a0ce952847017023624e0c37bf8aa314c39ba::shr::SHR".to_ascii_string(),
         };
@@ -1172,6 +1176,20 @@ module moonbags::moonbags {
         threshold_config.threshold = new_threshold;
     }
 
+    public entry fun update_config_withdraw_fee(
+        _: &AdminCap,
+        configuration: &mut Configuration,
+        new_init_platform_fee_withdraw: u16,
+        new_init_creator_fee_withdraw: u16,
+        new_init_stake_fee_withdraw: u16,
+        new_init_platform_stake_fee_withdraw: u16,
+    ) {
+        configuration.init_platform_fee_withdraw = new_init_platform_fee_withdraw;
+        configuration.init_creator_fee_withdraw = new_init_creator_fee_withdraw;
+        configuration.init_stake_fee_withdraw = new_init_stake_fee_withdraw;
+        configuration.init_platform_stake_fee_withdraw = new_init_platform_stake_fee_withdraw;
+    }
+
     /*
      * explanation of some magic numbers:
      * cetus tick bound is (-443636, 443636)
@@ -1393,6 +1411,13 @@ module moonbags::moonbags {
 
         let platform_stake_coin = coin::split(&mut pool.fee_recipient, platform_stake_share, ctx);
         moonbags_stake::update_reward_index<PlatformToken>(stake_config, platform_stake_coin, clock, ctx);
+        
+        // Transfer any remaining fees
+        let remaining_fee = coin::value(&pool.fee_recipient);
+        if (remaining_fee > 0) {
+            let remaining_coin = coin::split(&mut pool.fee_recipient, remaining_fee, ctx);
+            transfer::public_transfer(remaining_coin, PLATFORM_TOKEN_BUYER);
+        };
     }
 
     fun sqrt(number: u256) : u128 {
