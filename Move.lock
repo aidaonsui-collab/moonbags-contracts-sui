@@ -98,8 +98,8 @@ flavor = "sui"
 [env.mainnet]
 chain-id = "35834a8a"
 original-published-id = "0xc48e220589bbbc5b1e8f41525799ef295403d27395d8c8297709403f65383e36"
-latest-published-id = "0x77781f0d2ce77c59ca964abaddab038d8e3245da2fce36e04431111f74db1cc8"
-published-version = "3"
+latest-published-id = "0x6268e1f26bfab660f8b1e060a03b234223d92fd39aa3dc01194b4638be0deb49"
+published-version = "5"
 
 [env.testnet]
 chain-id = "4c78adac"

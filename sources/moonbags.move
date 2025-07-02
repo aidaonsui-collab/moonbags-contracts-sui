@@ -38,7 +38,6 @@ module moonbags::moonbags {
     const TURBOS_DEX: u8 = 1;
     const BONDING_SUPPORT_DEXES: vector<u8> = vector[CETUS_DEX, TURBOS_DEX];
     const DISTRIBUTE_FEE_LOCK_DURATION_MS: u64 = 300_000; // 5 minutes
-    const ONE_CHECKPOINT_TIMESTAMP_MS: u64 = 250; // 1 checkpoint timestamp
     const POOL_CREATION_FEE: u64 = 10_000_000; // 0.01 SUI
 
     // === Constants Addresses ===
@@ -53,6 +52,8 @@ module moonbags::moonbags {
     const BONDING_DEX_FIELD : vector<u8> = b"migrate_dex";
     const DISTRIBUTE_FEE_LOCK_TIME_FIELD: vector<u8> = b"fee_lock_time";
     const POOL_CREATION_TIMESTAMP_FIELD: vector<u8> = b"pool_creation_timestamp";
+    const BUY_BLOCK_DURATION_FIELD: vector<u8> = b"buy_block_duration";
+    const LOCK_BUY_DURATION_FIELD: vector<u8> = b"lock_buy_duration";
 
     const EInvalidInput: u64 = 1;
     const ENotEnoughThreshold: u64 = 2;
@@ -275,7 +276,7 @@ module moonbags::moonbags {
             id: object::new(ctx),
         };
 
-        let configuration = Configuration {
+        let mut configuration = Configuration {
             id: object::new(ctx),
             version: VERSION,
             admin: ctx.sender(),
@@ -291,6 +292,10 @@ module moonbags::moonbags {
             init_platform_stake_fee_withdraw: 2000,  // 20% to platform stakers
             token_platform_type_name: b"16ab6a14d76a90328a6b04f06b0a0ce952847017023624e0c37bf8aa314c39ba::shr::SHR".to_ascii_string(),
         };
+        
+        dynamic_field::add(&mut configuration.id, BUY_BLOCK_DURATION_FIELD, 1000); // 1 second
+        dynamic_field::add(&mut configuration.id, LOCK_BUY_DURATION_FIELD, 7_200_000); // 2 hours
+
         transfer::public_share_object<Configuration>(configuration);
 
         transfer::transfer(admin, ctx.sender());
@@ -625,9 +630,13 @@ module moonbags::moonbags {
         if (dynamic_field::exists_(&pool.id, POOL_CREATION_TIMESTAMP_FIELD)) {
             let creation_timestamp_ms = *dynamic_field::borrow<vector<u8>, u64>(&pool.id, POOL_CREATION_TIMESTAMP_FIELD);
             let current_timestamp_ms = clock::timestamp_ms(clock);
-            
-            if (current_timestamp_ms - creation_timestamp_ms < ONE_CHECKPOINT_TIMESTAMP_MS) {
-                let end_time = current_timestamp_ms + 3_600_000; // 1 hour lock
+
+            // expects exist
+            let buy_block_duration_ms = *dynamic_field::borrow<vector<u8>, u64>(&configuration.id, BUY_BLOCK_DURATION_FIELD);
+            let lock_buy_duration_ms = *dynamic_field::borrow<vector<u8>, u64>(&configuration.id, LOCK_BUY_DURATION_FIELD);
+
+            if (current_timestamp_ms - creation_timestamp_ms < buy_block_duration_ms) {
+                let end_time = current_timestamp_ms + lock_buy_duration_ms;
                 let locked_token = coin_token_out;
                 let amount_lock_token = coin::value<Token>(&locked_token);
 
@@ -1174,6 +1183,28 @@ module moonbags::moonbags {
 
     public entry fun update_threshold_config(_: &AdminCap, threshold_config: &mut ThresholdConfig, new_threshold: u64) {
         threshold_config.threshold = new_threshold;
+    }
+
+    public entry fun update_buy_block_duration_config(
+        _: &AdminCap,
+        configuration: &mut Configuration,
+        buy_block_duration_ms: u64,
+    ) {
+        if (dynamic_field::exists_(&configuration.id, BUY_BLOCK_DURATION_FIELD)) {
+            dynamic_field::remove<vector<u8>, u64>(&mut configuration.id, BUY_BLOCK_DURATION_FIELD);
+        };
+        dynamic_field::add(&mut configuration.id, BUY_BLOCK_DURATION_FIELD, buy_block_duration_ms);
+    }
+
+    public entry fun update_lock_buy_duration_config(
+        _: &AdminCap,
+        configuration: &mut Configuration,
+        lock_buy_duration_ms: u64,
+    ) {
+        if (dynamic_field::exists_(&configuration.id, LOCK_BUY_DURATION_FIELD)) {
+            dynamic_field::remove<vector<u8>, u64>(&mut configuration.id, LOCK_BUY_DURATION_FIELD);
+        };
+        dynamic_field::add(&mut configuration.id, LOCK_BUY_DURATION_FIELD, lock_buy_duration_ms);
     }
 
     public entry fun update_config_withdraw_fee(
