@@ -65,7 +65,7 @@ const redeem = async (tokenAddress: string, vesting_periods_index: number, liste
         const clock = tx.object("0x6");
 
         tx.moveCall({
-            target: `${packageAddress}::moonbags::cetus_redeem`,
+            target: `${packageAddress}::moonbags::redeem`,
             typeArguments: [tokenAddress],
             arguments: [
                 bondingCurveConfig,
@@ -84,7 +84,7 @@ const redeem = async (tokenAddress: string, vesting_periods_index: number, liste
 };
 
 const redeemAll = async () => {
-    const vesting_periods_index = 0; // Fixed to vesting index 0
+    const vesting_periods_index = 2; // Fixed to vesting index 0
     console.log(`Starting redemption for ${tokenData.length} tokens with vesting index ${vesting_periods_index}...`);
     
     for (let i = 0; i < tokenData.length; i++) {
