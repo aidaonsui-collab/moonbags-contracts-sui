@@ -553,9 +553,16 @@ module moonbags::moonbags {
         emit<TradedEventV2>(traded_event);
 
         transfer::public_transfer<Coin<SUI>>(coin_sui_out, ctx.sender());
-        let amount_coin_token_out = coin::value<Token>(&coin_token_out);
-        let end_time = clock::timestamp_ms(clock) + locking_time_ms;
-        moonbags_token_lock::create_lock(token_lock_config, coin_token_out, ctx.sender(), amount_coin_token_out, end_time, clock, ctx);
+        
+        if (locking_time_ms == 0) {
+            // No lock: transfer tokens directly to user
+            transfer::public_transfer<Coin<Token>>(coin_token_out, ctx.sender());
+        } else {
+            // Lock tokens for the specified duration
+            let amount_coin_token_out = coin::value<Token>(&coin_token_out);
+            let end_time = clock::timestamp_ms(clock) + locking_time_ms;
+            moonbags_token_lock::create_lock(token_lock_config, coin_token_out, ctx.sender(), amount_coin_token_out, end_time, clock, ctx);
+        };
 
         if (token_reserves_in_pool == actual_amount_out) {
             transfer_pool<Token>(admin, pool, cetus_burn_manager, cetus_pools, cetus_global_config, metadata_sui, clock, ctx);
@@ -775,8 +782,10 @@ module moonbags::moonbags {
         let threshold = option::get_with_default(&threshold, DEFAULT_THRESHOLD);
         assert!(threshold >= MINIMUM_THRESHOLD, EInvalidInput);
 
-        let one_hour_in_milliseconds = 3_600_000;
-        assert!(locking_time_ms >= one_hour_in_milliseconds, EInvalidInput);
+        if (locking_time_ms > 0) {
+            let one_hour_in_milliseconds = 3_600_000;
+            assert!(locking_time_ms >= one_hour_in_milliseconds, EInvalidInput);
+        };
 
         let initial_virtual_sui_reserves = calculate_init_sui_reserves(configuration, threshold);
 
