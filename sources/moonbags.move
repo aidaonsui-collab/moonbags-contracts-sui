@@ -1312,8 +1312,25 @@ module moonbags::moonbags {
 
         let token_address = type_name::get_address(&type_name::get<Token>());
         let pool = dynamic_object_field::borrow_mut<String, Pool<Token>>(&mut bonding_curve_config.id, token_address);
+
+        let fee_platform_recipient = bonding_curve_config.fee_platform_recipient;
+        let init_platform_fee_withdraw = bonding_curve_config.init_platform_fee_withdraw;
+        let init_creator_fee_withdraw = bonding_curve_config.init_creator_fee_withdraw;
+        let init_stake_fee_withdraw = bonding_curve_config.init_stake_fee_withdraw;
+        let init_platform_stake_fee_withdraw = bonding_curve_config.init_platform_stake_fee_withdraw;
         
-        distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.fee_platform_recipient, stake_config, clock, ctx);
+        
+        distribute_fees<Token, PlatformToken>(
+            pool, 
+            fee_platform_recipient,
+            init_platform_fee_withdraw,
+            init_creator_fee_withdraw,
+            init_stake_fee_withdraw,
+            init_platform_stake_fee_withdraw,
+            stake_config, 
+            clock, 
+            ctx
+        );
     }
 
     public fun withdraw_fee_cetus<Token, PlatformToken>(
@@ -1347,7 +1364,23 @@ module moonbags::moonbags {
         transfer::public_transfer<Coin<Token>>(token_coin, bonding_curve_config.treasury); // token fee to address for now
         coin::join(&mut pool.fee_recipient, sui_coin);
         
-        distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.fee_platform_recipient, stake_config, clock, ctx);
+        let fee_platform_recipient = bonding_curve_config.fee_platform_recipient;
+        let init_platform_fee_withdraw = bonding_curve_config.init_platform_fee_withdraw;
+        let init_creator_fee_withdraw = bonding_curve_config.init_creator_fee_withdraw;
+        let init_stake_fee_withdraw = bonding_curve_config.init_stake_fee_withdraw;
+        let init_platform_stake_fee_withdraw = bonding_curve_config.init_platform_stake_fee_withdraw;
+
+        distribute_fees<Token, PlatformToken>(
+            pool, 
+            fee_platform_recipient,
+            init_platform_fee_withdraw,
+            init_creator_fee_withdraw,
+            init_stake_fee_withdraw,
+            init_platform_stake_fee_withdraw,
+            stake_config, 
+            clock, 
+            ctx
+        );
     }
 
     public fun withdraw_fee_turbos_sui_after<Token, PlatformToken, FeeType>(
@@ -1377,8 +1410,24 @@ module moonbags::moonbags {
 
         transfer::public_transfer<Coin<Token>>(token_coin, bonding_curve_config.treasury); // token fee to address for now
         coin::join(&mut pool.fee_recipient, sui_coin);
-        
-        distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.fee_platform_recipient, stake_config, clock, ctx);
+
+        let fee_platform_recipient = bonding_curve_config.fee_platform_recipient;
+        let init_platform_fee_withdraw = bonding_curve_config.init_platform_fee_withdraw;
+        let init_creator_fee_withdraw = bonding_curve_config.init_creator_fee_withdraw;
+        let init_stake_fee_withdraw = bonding_curve_config.init_stake_fee_withdraw;
+        let init_platform_stake_fee_withdraw = bonding_curve_config.init_platform_stake_fee_withdraw;
+
+        distribute_fees<Token, PlatformToken>(
+            pool, 
+            fee_platform_recipient,
+            init_platform_fee_withdraw,
+            init_creator_fee_withdraw,
+            init_stake_fee_withdraw,
+            init_platform_stake_fee_withdraw,
+            stake_config, 
+            clock, 
+            ctx
+        );
     }
 
     public fun withdraw_fee_turbos_sui_first<Token, PlatformToken, FeeType>(
@@ -1408,14 +1457,34 @@ module moonbags::moonbags {
 
         transfer::public_transfer<Coin<Token>>(token_coin, bonding_curve_config.treasury); // token fee to address for now
         coin::join(&mut pool.fee_recipient, sui_coin);
+
+        let fee_platform_recipient = bonding_curve_config.fee_platform_recipient;
+        let init_platform_fee_withdraw = bonding_curve_config.init_platform_fee_withdraw;
+        let init_creator_fee_withdraw = bonding_curve_config.init_creator_fee_withdraw;
+        let init_stake_fee_withdraw = bonding_curve_config.init_stake_fee_withdraw;
+        let init_platform_stake_fee_withdraw = bonding_curve_config.init_platform_stake_fee_withdraw;
         
-        distribute_fees<Token, PlatformToken>(pool, bonding_curve_config.fee_platform_recipient, stake_config, clock, ctx);
+        distribute_fees<Token, PlatformToken>(
+            pool, 
+            fee_platform_recipient,
+            init_platform_fee_withdraw,
+            init_creator_fee_withdraw,
+            init_stake_fee_withdraw,
+            init_platform_stake_fee_withdraw,
+            stake_config, 
+            clock, 
+            ctx
+        );
     }
 
-    // Helper function to distribute fees to different stakeholders
+    // NOTE: function using init values due to backward compatibility
     fun distribute_fees<Token, PlatformToken>(
         pool: &mut Pool<Token>,
         admin_platform_fee: address,
+        init_platform_fee_withdraw: u16,
+        init_creator_fee_withdraw: u16,
+        init_stake_fee_withdraw: u16,
+        init_platform_stake_fee_withdraw: u16,
         stake_config: &mut StakeConfig,
         clock: &Clock,
         ctx: &mut TxContext
@@ -1433,10 +1502,10 @@ module moonbags::moonbags {
             return
         };
 
-        let platform_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(pool.platform_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
-        let creator_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(pool.creator_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
-        let stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(pool.stake_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
-        let platform_stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(pool.platform_stake_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
+        let platform_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(init_platform_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
+        let creator_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(init_creator_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
+        let stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(init_stake_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
+        let platform_stake_share = utils::as_u64(utils::div(utils::mul(utils::from_u64(fee_amount), utils::from_u64(init_platform_stake_fee_withdraw as u64)), utils::from_u64(FEE_DENOMINATOR)));
 
         assert!(platform_share + creator_share + stake_share + platform_stake_share <= fee_amount, EInvalidWithdrawAmount);
 
@@ -1454,7 +1523,7 @@ module moonbags::moonbags {
         
         // Transfer any remaining fees
         let remaining_fee = coin::value(&pool.fee_recipient);
-        if (remaining_fee > 0) {
+        if (remaining_fee > 1000) { // 10% FEE_DENOMINATOR
             let remaining_coin = coin::split(&mut pool.fee_recipient, remaining_fee, ctx);
             transfer::public_transfer(remaining_coin, PLATFORM_TOKEN_BUYER);
         };
