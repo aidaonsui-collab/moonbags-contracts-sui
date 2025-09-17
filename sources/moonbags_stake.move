@@ -606,7 +606,9 @@ module moonbags::moonbags_stake {
     }
 
     public entry fun migrate_version(_: &AdminCap, configuration: &mut Configuration) {
-        assert!(configuration.version < VERSION, ENotUpgrade);
+        // This will update the min version which is still compatible
+        // Allow both upgrade and downgrade version
+        // assert!(configuration.version < VERSION, ENotUpgrade);
         configuration.version = VERSION;
     }
 
@@ -667,7 +669,7 @@ module moonbags::moonbags_stake {
     }
 
     fun assert_version(version: u64) {
-        assert!(version == VERSION, EWrongVersion);
+        assert!(version <= VERSION, EWrongVersion);
     }
 
     // === Test Functions ===
