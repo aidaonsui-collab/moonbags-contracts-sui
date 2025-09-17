@@ -134,6 +134,14 @@ module moonbags::moonbags_stake {
         timestamp: u64,
     }
 
+    public struct UpdateCreatorEvent has copy, drop, store {
+        token_address: String,
+        creator_pool: ID,
+        old_creator: String,
+        new_creator: String,
+        updated_by: String,
+    }
+
     fun init(ctx: &mut TxContext) {
         let admin = AdminCap {
             id: object::new(ctx),
@@ -529,6 +537,38 @@ module moonbags::moonbags_stake {
         emit<ClaimCreatorPoolEvent>(claim_creator_pool_event);
 
         reward_amount
+    }
+
+    /*
+     * Updates the creator address for a creator pool. Only admin can call this function.
+     * 
+     * @typeArgument StakingToken - The token type associated with the creator pool.
+     * @param configuration - Global configuration object.
+     * @param new_creator - New address to set as the creator for the pool.
+     * @param ctx - Mutable transaction context for sender information.
+     */
+    public entry fun update_creator<StakingToken>(_: &AdminCap, configuration: &mut Configuration, new_creator: address, ctx: &mut TxContext) {
+        assert_version(configuration.version);
+        let creator_pool_type_name = type_name::into_string(type_name::get<CreatorPool<StakingToken>>());
+
+        assert!(dynamic_object_field::exists_(&configuration.id, creator_pool_type_name), EStakingCreatorNotExist);
+
+        let creator_pool = dynamic_object_field::borrow_mut<String, CreatorPool<StakingToken>>(
+            &mut configuration.id,
+            creator_pool_type_name,
+        );
+
+        let old_creator = creator_pool.creator;
+        creator_pool.creator = new_creator;
+
+        let update_creator_event = UpdateCreatorEvent {
+            token_address: type_name::into_string(type_name::get<StakingToken>()),
+            creator_pool: object::id(creator_pool),
+            old_creator: old_creator.to_ascii_string(),
+            new_creator: new_creator.to_ascii_string(),
+            updated_by: ctx.sender().to_ascii_string(),
+        };
+        emit<UpdateCreatorEvent>(update_creator_event);
     }
 
     // === View Functions ===

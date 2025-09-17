@@ -84,7 +84,7 @@ const redeem = async (tokenAddress: string, vesting_periods_index: number, liste
 };
 
 const redeemAll = async () => {
-    const vesting_periods_index = 2; // Fixed to vesting index 0
+    const vesting_periods_index = 4;
     console.log(`Starting redemption for ${tokenData.length} tokens with vesting index ${vesting_periods_index}...`);
     
     for (let i = 0; i < tokenData.length; i++) {
@@ -110,8 +110,8 @@ const run = async () => {
     });
 
     console.log("Choose an option:");
-    console.log("1. Redeem for a single token (vesting index 0)");
-    console.log("2. Redeem for all tokens in the list (vesting index 0)");
+    console.log("1. Redeem for a single token");
+    console.log("2. Redeem for all tokens in the list");
     
     rl.question("Enter your choice (1 or 2): ", (choice) => {
         if (choice === "1") {
