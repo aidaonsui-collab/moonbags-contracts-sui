@@ -59,6 +59,16 @@ module moonbags::moonbags_token_lock {
         amount: u64,
     }
 
+    public struct UpdateLockContractEvent has copy, drop {
+        contract_id: address,
+        token_address: String,
+        old_locker: String,
+        new_locker: String,
+        old_recipient: String,
+        new_recipient: String,
+        updated_by: String,
+    }
+
     fun init(ctx: &mut TxContext) {
         transfer::transfer(
             AdminCap { id: object::new(ctx) },
@@ -228,6 +238,41 @@ module moonbags::moonbags_token_lock {
         
         config.lock_fee = new_lock_fee;
         config.admin = new_admin;
+    }
+
+    /*
+     * Updates both the locker and recipient of a lock contract to the same new address in case of wallet compromise.
+     * Only admin can perform this operation.
+     * 
+     * @param admin_cap - AdminCap proving the caller is an admin
+     * @param contract - Mutable reference to the lock contract to update
+     * @param new_address - New address to set for both locker and recipient
+     * @param ctx - Transaction context
+     */
+    public entry fun update_lock_contract<Token>(
+        _: &AdminCap,
+        contract: &mut LockContract<Token>,
+        new_address: address,
+        ctx: &mut TxContext
+    ) {
+        assert!(!contract.closed, EContractClosed);
+
+        let old_locker = contract.locker;
+        let old_recipient = contract.recipient;
+        
+        contract.locker = new_address;
+        contract.recipient = new_address;
+
+        let update_event = UpdateLockContractEvent {
+            contract_id: object::uid_to_address(&contract.id),
+            token_address: type_name::into_string(type_name::get<Token>()),
+            old_locker: old_locker.to_ascii_string(),
+            new_locker: new_address.to_ascii_string(),
+            old_recipient: old_recipient.to_ascii_string(),
+            new_recipient: new_address.to_ascii_string(),
+            updated_by: ctx.sender().to_ascii_string(),
+        };
+        event::emit(update_event);
     }
 
     // === Test Functions ===
