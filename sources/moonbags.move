@@ -30,8 +30,8 @@ module moonbags::moonbags {
     use turbos_clmm::position_manager::TurbosPositionBurnNFT;
 
     // === Constants Config ===
-    const DEFAULT_THRESHOLD: u64 = 3000000000; // 3 SUI
-    const MINIMUM_THRESHOLD: u64 = 2000000000; // 2 SUI
+    const DEFAULT_THRESHOLD: u64 = 2000000000000; // 2000 SUI (from MEMORY)
+    const MINIMUM_THRESHOLD: u64 = 100000000000; // 100 SUI minimum (from MEMORY)
     const VERSION: u64 = 3;
     const FEE_DENOMINATOR: u64 = 10000;
     const CETUS_DEX: u8 = 0;
@@ -283,8 +283,8 @@ module moonbags::moonbags {
             treasury: ctx.sender(),
             fee_platform_recipient: ctx.sender(),
             platform_fee: 100, // 1%
-            initial_virtual_token_reserves: 8000000000000, // 8 million
-            remain_token_reserves: 2000000000000, // 2 million
+            initial_virtual_token_reserves: 1066666667000000, // 1.067B tokens (from MEMORY)
+            remain_token_reserves: 533333333500000, // ~533M tokens (90% to bonding curve, 10% reserved)
             token_decimals: 6,
             init_platform_fee_withdraw: 1500,        // 15% to platform
             init_creator_fee_withdraw: 3000,         // 30% to creator
