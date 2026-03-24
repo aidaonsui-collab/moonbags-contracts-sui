@@ -39,6 +39,7 @@ module moonbags::moonbags {
     const BONDING_SUPPORT_DEXES: vector<u8> = vector[CETUS_DEX, TURBOS_DEX];
     const DISTRIBUTE_FEE_LOCK_DURATION_MS: u64 = 300_000; // 5 minutes
     const POOL_CREATION_FEE: u64 = 10_000_000; // 0.01 SUI
+    const MIGRATION_FEE: u64 = 50_000_000_000; // 50 SUI sent to treasury on graduation
 
     // === Constants Addresses ===
     const BONDING_DEPLOYER: address = @0x0db7989b98d681455f424035e3f01c02e27f738fdd6634ef34dedf576a9d8cea;
@@ -280,21 +281,21 @@ module moonbags::moonbags {
             id: object::new(ctx),
             version: VERSION,
             admin: ctx.sender(),
-            treasury: ctx.sender(),
-            fee_platform_recipient: ctx.sender(),
-            platform_fee: 100, // 1%
+            treasury: @0x92a32ac7fd525f8bd37ed359423b8d7d858cad26224854dfbff1914b75ee658b,
+            fee_platform_recipient: @0x92a32ac7fd525f8bd37ed359423b8d7d858cad26224854dfbff1914b75ee658b,
+            platform_fee: 200, // 2%
             initial_virtual_token_reserves: 1066666667000000, // 1.067B tokens (from MEMORY)
             remain_token_reserves: 533333333500000, // ~533M tokens (90% to bonding curve, 10% reserved)
             token_decimals: 6,
-            init_platform_fee_withdraw: 1500,        // 15% to platform
-            init_creator_fee_withdraw: 3000,         // 30% to creator
-            init_stake_fee_withdraw: 2500,           // 25% to stakers
-            init_platform_stake_fee_withdraw: 2000,  // 20% to platform stakers
+            init_platform_fee_withdraw: 4000,        // 40% to platform treasury (2% fee * 40%)
+            init_creator_fee_withdraw: 3000,         // 30% to creator (2% fee * 30%)
+            init_stake_fee_withdraw: 3000,             // 30% to AIDA stakers (2% fee * 30%)
+            init_platform_stake_fee_withdraw: 0,               // 0% (no platform staking in this config)
             token_platform_type_name: b"16ab6a14d76a90328a6b04f06b0a0ce952847017023624e0c37bf8aa314c39ba::shr::SHR".to_ascii_string(),
         };
         
         dynamic_field::add(&mut configuration.id, BUY_BLOCK_DURATION_FIELD, 1000); // 1 second
-        dynamic_field::add(&mut configuration.id, LOCK_BUY_DURATION_FIELD, 7_200_000); // 2 hours
+        dynamic_field::add(&mut configuration.id, LOCK_BUY_DURATION_FIELD, 0); // No staking lock
 
         transfer::public_share_object<Configuration>(configuration);
 
@@ -907,6 +908,11 @@ module moonbags::moonbags {
         assert!(real_sui_reserves_amount >= threshold_config.threshold, ENotEnoughThreshold);
         coin::join<Token>(&mut real_token_coin, coin::split<Token>(&mut pool.remain_token_reserves, coin::value<Token>(remain_token_reserves), ctx));
         if (real_sui_reserves_amount >= threshold_config.threshold) {
+            // Send 50 SUI migration fee to treasury, rest to admin
+            let migration_fee = MIGRATION_FEE;
+            if (real_sui_reserves_amount >= threshold_config.threshold + migration_fee) {
+                transfer::public_transfer<Coin<SUI>>(coin::split<SUI>(&mut real_sui_coin, migration_fee, ctx), configuration.treasury);
+            };
             transfer::public_transfer<Coin<SUI>>(coin::split<SUI>(&mut real_sui_coin, threshold_config.threshold, ctx), configuration.admin);
             transfer::public_transfer<Coin<Token>>(coin::split<Token>(&mut real_token_coin, configuration.remain_token_reserves, ctx), configuration.admin);
         };
