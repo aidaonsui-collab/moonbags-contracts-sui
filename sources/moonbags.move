@@ -284,8 +284,8 @@ module moonbags::moonbags {
             treasury: @0x92a32ac7fd525f8bd37ed359423b8d7d858cad26224854dfbff1914b75ee658b,
             fee_platform_recipient: @0x92a32ac7fd525f8bd37ed359423b8d7d858cad26224854dfbff1914b75ee658b,
             platform_fee: 200, // 2%
-            initial_virtual_token_reserves: 1066666667000000, // 1.067B tokens (from MEMORY)
-            remain_token_reserves: 533333333500000, // ~533M tokens (90% to bonding curve, 10% reserved)
+            initial_virtual_token_reserves: 533333333500000, // ~533M tokens initial virtual reserves
+            remain_token_reserves: 1066666667000000, // ~1.067B tokens remain (from MEMORY)
             token_decimals: 6,
             init_platform_fee_withdraw: 4000,        // 40% to platform treasury (2% fee * 40%)
             init_creator_fee_withdraw: 3000,         // 30% to creator (2% fee * 30%)
@@ -1679,7 +1679,7 @@ module moonbags::moonbags {
 
     // @notion: Mimic of the function `transfer_pool` for testing purposes
     #[test_only]
-    fun transfer_pool_without_init_cetus<Token>(admin: address, pool: &mut Pool<Token>, ctx: &mut TxContext) {
+    public entry fun transfer_pool_without_init_cetus<Token>(admin: address, pool: &mut Pool<Token>, ctx: &mut TxContext) {
         pool.is_completed = true;
 
         let real_token_reserves = &pool.real_token_reserves;
